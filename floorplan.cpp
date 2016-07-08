@@ -245,11 +245,13 @@ void DominantPath::generateG2() {
     for (int i=0; i < _nG2Points; i++) {
         _G2Points[i].ref = &_mPoints[i];
         _G2totPoints[idx] = &_G2Points[i];
+        _G2totPoints[idx]->i = idx;
         idx++;
     }
     for (int i=0; i < _nG2Corners; i++) {
         _G2Corners[i].ref = _flp->getCornerPtr(i);
         _G2totPoints[idx] = &_G2Corners[i];
+        _G2totPoints[idx]->i = idx;
         idx++;
     }
     
@@ -260,24 +262,22 @@ void DominantPath::generateG2() {
         // Create two walls for both directions
         WallG2 wall1, wall2;
         
-        wall1.c1 = wptr->c1;
-        wall1.c2 = wptr->c2;
+        // wall1: c1 --> c2
+        wall1.to = wptr->c2;
         wall1.loss = wptr->loss;
         
-        wall2.c1 = wptr->c2;
-        wall2.c2 = wptr->c1;
+        // wall2: c2 --> c1
+        wall2.to = wptr->c1;
         wall2.loss = wptr->loss;
         
-        wall1.dx = wall1.c2->x - wall1.c1->x;
-        wall1.dy = wall1.c2->y - wall1.c1->y;
-        wall1.angle = std::atan2(wall1.dy, wall1.dx);
+        double dx = wptr->x2() - wptr->x1();
+        double dy = wptr->y2() - wptr->y1();
         
-        wall2.dx = wall2.c2->x - wall2.c1->x;
-        wall2.dy = wall2.c2->y - wall2.c1->y;
-        wall2.angle = std::atan2(wall2.dy, wall2.dx);
+        wall1.angle = std::atan2(dy, dx);
+        wall2.angle = std::atan2(-dy, -dx);
         
-        int idx1 = wall1.c1->i;
-        int idx2 = wall2.c1->i;
+        int idx1 = wptr->c1->i;
+        int idx2 = wptr->c2->i;
         
         _G2Corners[idx1].insertSide(wall1);
         _G2Corners[idx2].insertSide(wall2);
@@ -286,34 +286,48 @@ void DominantPath::generateG2() {
     // Create links
     for (int i=0; i < _nG2totPoints; i++) {
         PointG2 *point = _G2totPoints[i];
+        int nAdjWalls = 0;
+        
+        // This saves a temporary list of links
+        //  - we'll sort this later
+        EdgeG2 *tmpList = 0;
+        int tmpIdx = 0;
         
         if (point->isCorner()) {
             CornerG2 *corner = reinterpret_cast<CornerG2 *>(point);
             
             // Create links based on walls
-            int sections = (int)corner->walls.size();
+            nAdjWalls = (int)corner->walls.size();
             
-            for (int j=0; j < sections; j++) {
+            tmpList = new EdgeG2[_nG2totPoints + nAdjWalls];
+            
+            for (int j=0; j < nAdjWalls; j++) {
                 WallG2 wall = corner->walls[j];
                 
                 // For each wall, create one link on each side
                 EdgeG2 edge1, edge2;
-                edge1.v1 = edge2.v1 = &_G2Corners[wall.c1->i];
-                edge1.v2 = edge2.v2 = &_G2Corners[wall.c2->i];
+                edge1.to = edge2.to = &_G2Corners[wall.to->i];
                 edge1.section = j;
-                edge2.section = (j+1)%sections;
+                edge2.section = (j+1) % nAdjWalls;
                 edge1.isAlongWall = 1;
                 edge2.isAlongWall = 2;
-                edge1.angle = edge2.angle = std::atan2(edge1.dy(), edge1.dx());
-                edge1.dist = edge2.dist = std::sqrt(edge1.dx()*edge1.dx()+edge1.dy()*edge1.dy());
+                
+                double dx = _dx(point, edge1);
+                double dy = _dy(point, edge1);
+                
+                //edge1.angle = edge2.angle = std::atan2(dy, dx);
+                edge1.angle = edge2.angle = wall.angle;
+                edge1.dist = edge2.dist = std::sqrt(dx*dx + dy*dy);
                 
                 // loss should be zero
                 edge1.loss = edge2.loss = 0.0;
                 
-                corner->links.push_back(edge1);
-                corner->links.push_back(edge2);
+                tmpList[tmpIdx++] = edge1;
+                tmpList[tmpIdx++] = edge2;
                 
             }
+        } else {
+            tmpList = new EdgeG2[_nG2totPoints];
         }
         
         // Create links to other corners and measurement points
@@ -322,12 +336,19 @@ void DominantPath::generateG2() {
             
             PointG2 *p2 = _G2totPoints[j];
             EdgeG2 edge;
-            edge.v1 = point;
-            edge.v2 = p2;
-            edge.angle = std::atan2(edge.dy(), edge.dx());
-            edge.dist = std::sqrt(edge.dx()*edge.dx()+edge.dy()*edge.dy());
+            edge.to = p2;
+            
+            double dx = _dx(point, edge);
+            double dy = _dy(point, edge);
+            
+            edge.angle = std::atan2(dy, dx);
+            edge.dist = std::sqrt(dx*dx + dy*dy);
             edge.isAlongWall = 0;
             
+            // add the link to the list
+            tmpList[tmpIdx++] = edge;
+            
+            /* old implementation, this is slower
             // First check if this is collinear to existing links
             bool addthis = true;
             int replaceid = -1;
@@ -335,7 +356,7 @@ void DominantPath::generateG2() {
                 
                 // Check if the link already exists
                 //  - when this link goes along a wall
-                if (point->links[k].v2 == p2) {
+                if (point->links[k].to == p2) {
                     addthis = false;
                     break;
                 }
@@ -380,24 +401,94 @@ void DominantPath::generateG2() {
             else if (replaceid >= 0) {
                 point->links[replaceid] = edge;
             }
+             */
         }
         
+        // Sort the list and remove duplicated links
+        std::sort(tmpList, tmpList + tmpIdx, mycmp);
+        bool *tmpListKeep = new bool[tmpIdx];
+        
+        for (int j=0; j < tmpIdx; j++) tmpListKeep[j] = false;
+        
+        // j is the idx to keep
+        for (int j=0, k=1;;k++) {
+            // should we handle +pi/-pi?
+            if (k == tmpIdx) {
+                tmpListKeep[j] = true;
+                break;
+            }
+            if (std::abs(tmpList[j].angle - tmpList[k].angle) > 1.0E-6) {
+                tmpListKeep[j] = true;
+                j=k;
+            } else { // If two lines have the same angle
+                // Intuitively, we should keep the line with smaller dist
+                // However, in any way we should keep the lines along a wall
+                
+                // remove duplicated links
+                if (tmpList[j].to == tmpList[k].to) {
+                    if (tmpList[k].isAlongWall == 0) continue;
+                    if (tmpList[j].isAlongWall == 0) {
+                        j=k; continue;
+                    }
+                }
+                
+                if (tmpList[k].dist < tmpList[j].dist) {
+                    // In this case, we should discard j, but if j is a line along a wall, we should keep it
+                    if (tmpList[j].isAlongWall) {
+                        tmpListKeep[j] = true;
+                    }
+                    j=k;
+                } else {
+                    // In this case, we are going to discard k, but again, if k is a line along a wall, we should keep it
+                    if (tmpList[k].isAlongWall) {
+                        tmpListKeep[k] = true;
+                    }
+                }
+            }
+        }
+        
+        for (int j=0; j < tmpIdx; j++) {
+            if (tmpListKeep[j])
+                point->links.push_back(tmpList[j]);
+        }
+        
+        if (point->isCorner()) {
+            int wallId = 0;
+            
+            // find which section it is in
+            for (int j=0; j < point->links.size(); j++) {
+                if (point->links[j].isAlongWall == 0) {
+                    point->links[j].section = wallId % nAdjWalls;
+                } else if (point->links[j].isAlongWall == 1) {
+                    wallId++;
+                }
+            }
+        }
+        
+        for (int j=0; j < point->links.size(); j++) {
+            if (point->links[j].isAlongWall == 0) {
+                point->links[j].loss = getLoss(point, point->links[j]);
+            }
+        }
+        
+        delete [] tmpListKeep;
+        delete [] tmpList;
     }
 
 }
 
-double DominantPath::getLoss(const EdgeG2 &edge) const {
-    double x = edge.v1->x();
-    double y = edge.v1->y();
-    double dx = edge.dx();
-    double dy = edge.dy();
+double DominantPath::getLoss(const PointG2 *p, const EdgeG2 &edge) const {
+    double x = p->x();
+    double y = p->y();
+    double dx = _dx(p, edge);
+    double dy = _dy(p, edge);
 
     double loss = 0.0;
     
     for (int i=0; i < _flp->getNumWalls(); i++) {
         Wall *wall = _flp->getWallPtr(i);
         
-        if (edge.v1->ref == wall->c1 || edge.v2->ref == wall->c1 || edge.v1->ref == wall->c2 || edge.v2->ref == wall->c2) continue;
+        if (p->ref == wall->c1 || edge.to->ref == wall->c1 || p->ref == wall->c2 || edge.to->ref == wall->c2) continue;
         
         double u = wall->c1->x;
         double v = wall->c1->y;
@@ -417,13 +508,15 @@ double DominantPath::getLoss(const EdgeG2 &edge) const {
     return loss;
 }
 
-int DominantPath::findSection(const CornerG2 *corner, const EdgeG2 &inedge) const {
+int DominantPath::findSection(const CornerG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const {
+    // corner1 ---> corner2
+    
     // First check if this comes along a wall
     if (inedge.isAlongWall) {
         // Find the corresponding wall
         int wallidx = -1;
-        for (int i=0; i < corner->walls.size(); i++) {
-            if (corner->walls[i].c2 == inedge.v1->ref) {
+        for (int i=0; i < corner2->walls.size(); i++) {
+            if (corner2->walls[i].to == corner1->ref) {
                 wallidx = i;
                 break;
             }
@@ -434,16 +527,16 @@ int DominantPath::findSection(const CornerG2 *corner, const EdgeG2 &inedge) cons
          ----------------
          2              1
          */
-        if (inedge.isAlongWall==1) return (wallidx+1)%(corner->walls.size());
+        if (inedge.isAlongWall==1) return (wallidx+1)%(corner2->walls.size());
         else return wallidx;
     }
     
     // Else compute the angle
-    double angle = atan2(-inedge.dy(),-inedge.dx());
-    int sections = (int)corner->walls.size();
+    double angle = atan2(-_dy(corner1,inedge), -_dx(corner1,inedge));
+    int sections = (int)corner2->walls.size();
     int section = 0;
     for (int k=0; k < sections; k++) {
-        if (angle < corner->walls[k].angle) break;
+        if (angle < corner2->walls[k].angle) break;
         section++;
     }
     return section % sections;
@@ -466,6 +559,14 @@ double DominantPath::cornerLoss(const CornerG2 *corner, int insec, int outsec) c
     
     std::cout << loss1 << "," << loss2 << std::endl;
     return MIN(loss1,loss2);
+}
+
+double DominantPath::_dx(const PointG2 *p, const EdgeG2 &edge) const {
+    return (edge.to->x() - p->ref->x);
+}
+
+double DominantPath::_dy(const PointG2 *p, const EdgeG2 &edge) const {
+    return (edge.to->y() - p->ref->y);
 }
 
 // Check if the data structure is correct
@@ -512,10 +613,12 @@ void DominantPath::printG2(int p, double scale, double shift) {
         printf("%+.5f, %3d, % 3.5f, %.3e\n", point->links[i].angle, point->links[i].section, point->links[i].dist, point->links[i].loss);
     }
     
+    /*
     if (point->isCorner()) {
         CornerG2 *corner = reinterpret_cast<CornerG2 *>(point);
         if (corner->walls.size()>1) std::cout << cornerLoss(corner, 1, 0) << std::endl;
     }
+     */
 #endif
     
     namedWindow( "Display window", cv::WINDOW_AUTOSIZE );

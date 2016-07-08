@@ -12,7 +12,9 @@
 int main(int argc, const char * argv[]) {
     
     Floorplan flp;
-    flp.genRandomFloorplan(5, 5, 0.1);
+    
+    // size_x, size_y, wall_loss
+    flp.genRandomFloorplan(10, 10, 0.1);
     //flp.printFloorplan();
     
     std::cerr << "Floorplan generated." << std::endl;
@@ -22,8 +24,12 @@ int main(int argc, const char * argv[]) {
     pts[0].y = 2;
     pts[1].x = 3.3;
     pts[1].y = 3.3;
+    
+    // Floorplan *, # of measurement points, measurement points
     DominantPath dmp(&flp, 2, pts);
     dmp.generateG2();
-    dmp.printG2(16, 100, 5);
+    
+    // id of the inspected point, scale, shift
+    dmp.printG2(50, 50, 5);
     return 0;
 }

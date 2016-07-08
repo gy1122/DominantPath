@@ -21,6 +21,7 @@ struct Corner {
 };
 
 struct Wall {
+    
     inline double x1() const { return c1->x; }
     inline double y1() const { return c1->y; }
     inline double x2() const { return c2->x; }
@@ -68,14 +69,13 @@ class PointG2;
 class CornerG2;
 
 struct WallG2 {
-    
-    Corner *c1;
-    Corner *c2;
+
+    Corner *to;
     double loss;
     
     // Let's keep these for walls
-    double dx;
-    double dy;
+    // double dx;
+    // double dy;
     double angle;
 };
 
@@ -85,6 +85,7 @@ public:
     inline double y() const { return ref->y; }
     virtual inline bool isCorner() const { return false; }
     
+    int        i;
     Point      *ref;
     
     // Links connect to this point
@@ -96,11 +97,8 @@ public:
 
 // We consider this to be directed.
 struct EdgeG2 {
-    inline double dx() const { return v2->x() - v1->x(); }
-    inline double dy() const { return v2->y() - v1->y(); }
     
-    PointG2     *v1;
-    PointG2     *v2;
+    PointG2     *to;
     
     double      loss;
     
@@ -140,10 +138,13 @@ public:
     
 private:
     
-    double getLoss(const EdgeG2 &edge) const;
+    double getLoss(const PointG2 *p, const EdgeG2 &edge) const;
     
-    int findSection(const CornerG2 *corner, const EdgeG2 &inedge) const;
+    int findSection(const CornerG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;
     double cornerLoss(const CornerG2 *corner, int insec, int outsec) const;
+    
+    double _dx(const PointG2 *p, const EdgeG2 &edge) const;
+    double _dy(const PointG2 *p, const EdgeG2 &edge) const;
     
     Floorplan   *_flp;
     
