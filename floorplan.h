@@ -10,7 +10,11 @@
 #define __DominantPath__floorplan__
 
 #include <vector>
-#include <map>
+#include <set>
+
+// ---------------------------------
+//  Data structure for floorplan
+// ---------------------------------
 
 struct Corner;
 struct Wall;
@@ -51,6 +55,10 @@ public:
     inline int getNumWalls() const { return _nWalls; }
     inline Wall *getWallPtr(int i) const { return &_walls[i]; }
     
+    // TODO:
+    // save
+    // load
+    
 private:
     
     int     _nCorners;
@@ -61,6 +69,9 @@ private:
     
 };
 
+// -------------------------------------
+//  Data structure for G2 (declaration)
+// -------------------------------------
 
 typedef Corner Point;
 
@@ -69,8 +80,17 @@ struct EdgeG2;
 class PointG2;
 class CornerG2;
 
+// ---------------------------------
+//  Data structure for Dijkstra
+// ---------------------------------
 
 struct DijkstraPoint {
+    
+    // This struct works as the pointer to a vertex in G2.
+    // If p is a corner, then i denotes the index of the socket in that corner.
+    // If p is a measurement point, then i should always be zero.
+    // ---------------------------------------------
+    
     DijkstraPoint(PointG2 *p_=0, int i_=0);
     
     PointG2 *p;
@@ -78,16 +98,64 @@ struct DijkstraPoint {
 };
 
 struct DijkstraLabel {
+    
+    // We keep this struct for each socket in G2
+    // Each time we run the Dijkstra algorithm, we should call
+    // DominantPath::resetDijkstra() to reset these labels.
+    // ---------------------------------------------
+    
     DijkstraPoint   from;
     double          val;
+    double          radar;
     bool            visited;
+    
+    double          l_e;
+    double          d_e;
 };
 
+// Priorty queue
+// So far, the priority queue is implemented with std::set, where in most environment this should be RB-tree.
+// std::set allows us to implement decrease_key more easily.
+// -------------------------------------
+class Priority_Queue {
+    
+public:
+    struct mycmp_dijk_point {
+        bool operator()(const DijkstraPoint &p1, const DijkstraPoint &p2) const;
+    };
+    
+    typedef std::set<DijkstraPoint, mycmp_dijk_point> my_set;
+    
+private:
+    my_set _queue;
+    
+public:
+    inline void add(DijkstraPoint p) { _queue.insert(p); }
+    inline size_t size() const { return _queue.size(); }
+
+    DijkstraPoint extract_min();
+    void decrease_key(DijkstraPoint &p, double newval);
+    
+    inline my_set::iterator begin() { return _queue.begin(); }
+    
+};
+
+// Quick access functions:
 DijkstraLabel &getDijkstraLabel(DijkstraPoint &p);
 double getDijkstraVal(const DijkstraPoint &p);
+double getDijkstraRadar(const DijkstraPoint &p);
+
+
+// -------------------------------------
+//  Data structure for G2 (declaration)
+// -------------------------------------
 
 struct WallG2 {
-
+    
+    // This data structure is converted from class Wall.
+    // Each corner should keep a sorted list of this type.
+    // ---------------------------------------------
+    
     Corner *to;
     
     // Derived variables
@@ -96,6 +164,10 @@ struct WallG2 {
 };
 
 class PointG2 {
+    
+    //
+    // ---------------------------------------------
+    
 public:
     inline PointG2():dlabels(0) {}
     inline ~PointG2() { if (dlabels) delete [] dlabels; }
@@ -104,23 +176,36 @@ public:
     inline double y() const { return ref->y; }
     virtual inline bool isCorner() const { return false; }
     
+    inline int eincr(int i) const { return (i+1) % links.size(); }
+    inline int edecr(int i) const { return (i + links.size() -1) % (int)links.size(); }
+    
+    // This function searches the index of the output slot with the most similar angle
     int searchIdx(double angle) const;
     
+    // i is the index of the point in DominantPath::_nG2totPoints
     int        i;
     Point      *ref;
     
     // Links connect to this point
     //  - This is a sorted list
-    //  - But instead, each link should keep which section it is so that we can compute the loss easily.
-    //  - Also, this helps us know which side of the wall it is at.
+    //  - Each link should keep which section it is so that we can compute the loss easily.
     std::vector<EdgeG2> links;
     
-    // Dijkstra labels
+    // Dijkstra labels, this is a list with the same length as links.
     DijkstraLabel* dlabels;
 };
 
-// We consider this to be directed.
 struct EdgeG2 {
+    
+    // We consider each edge in G2 as directed.
+    //
+    // When constructing an instance of this struct,
+    // it is gauranteed that an identical EdgeG2 instance with reversed direction
+    // is also constructed.
+    //
+    // target_i : the index of the socket in the target node
+    // source_i : the index of the socket in the source node
+    // ---------------------------------------------
     
     PointG2     *target;
     int         target_i;
@@ -131,37 +216,78 @@ struct EdgeG2 {
     double      dist;
     double      angle;
     
-    // with respect to the corner in v1.  If v1 is not a corner, then these two are not valid.
+    // with respect to the corner in tail.  If the tail is not a corner, then these two are not valid.
     int         section;
     int         isAlongWall;
 };
 
 class CornerG2 : public PointG2 {
+    
+    //
+    // ---------------------------------------------
+    
 public:
     virtual inline bool isCorner() const { return true; }
     
     void insertSide(WallG2 wall);
     
+    inline int wincr(int i) const { return (i+1) % walls.size(); }
+    inline int wdecr(int i) const { return (i + sections() -1) % sections(); }
+    inline int sections() const { return (int)walls.size(); }
+    
     // Walls connect to this corner
     //  - When creating this list, make sure to reorder v1 and v2 so that v1 is this corner.
     //  - Also, make sure this list is sorted by the incident angle.
+    //  ! You must use insertSide function to add a wall to this list.
     std::vector<WallG2> walls;
 };
 
 
+
+// -------------------------------------
+//  Main class
+// -------------------------------------
+
 class DominantPath {
+    
+    //
+    // ---------------------------------------------
     
 public:
     
+    // Constructor:
+    //  - flp: pointer to a Floorplan instance
+    //  - nmpt: number of measurement points
+    //  - mpts: a list of the measurement points
+    //  - angleLoss: difraction loss per unit rad (dB)
+    // ---------------------------------------------
     DominantPath(Floorplan *flp, int nmpt, Point *mpts, double angleLoss);
     ~DominantPath();
     
+    // This function generates G2 from Floorplan *_flp
     void generateG2();
     
+    // This function performs Dijkstra algorithm to find the shortest path from s to t
+    //   - lambda: parameter for mixing two weights.  The weight will be L + labmda*D
+    //   - s: index of the source measurement point
+    //   - t: index of the destination measurement point
+    // ---------------------------------------------
     void Dijkstra(double lambda, int s, int t);
     
+    // This function prints part of G2
+    //   - p: will plot the edges incident from point indexed p
+    //   - scale: the amount to scale the plot
+    //   - shift: the amount to shift the plot
+    // ---------------------------------------------
     void printG2(int p, double scale, double shift);
-    void printDijkstra(double lambda, int s, int t, double scale, double shift);
+    
+    // This function prints the result of Dijkstra
+    //   - s: index of the source measurement point
+    //   - t: index of the destination measurement point
+    //   - scale: the amount to scale the plot
+    //   - shift: the amount to shift the plot
+    // ---------------------------------------------
+    void printDijkstra(int s, int t, double scale, double shift, double lambda);
     
 private:
     
@@ -171,15 +297,17 @@ private:
     void createLinks(PointG2 *point);
     void createLinksForCorner(CornerG2 *corner);
     void createLinksForPoint(PointG2 *point);
-    void mergeLinks(PointG2 *point, int nEdges, EdgeG2* tmpList, bool *tmpListKeep);
+    void mergeLinks(PointG2 *point, int nEdges, EdgeG2* tmpList);
     void createLinksPostProc(PointG2 *point);
-    
-    //
-    void initDijkstra();
-    void resetDijkstra();
-    
     double getLoss(const PointG2 *p, const EdgeG2 &edge) const;
     
+    // For Dijkstra:
+    void initDijkstra();
+    void resetDijkstra();
+    void Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw);
+    void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
+    
+    // Helper functions:
     int findSection(const PointG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;
     double cornerLoss(const CornerG2 *corner, int insec, int outsec) const;
     
@@ -198,7 +326,7 @@ private:
     PointG2     *_G2Points;
     CornerG2    *_G2Corners;
     
-    // Also create a combined list for references.  Not sure if this will be used later
+    // Also create a combined list for references.  
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
     
