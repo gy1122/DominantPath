@@ -10,6 +10,7 @@
 #define __DominantPath__floorplan__
 
 #include <vector>
+#include <map>
 
 struct Corner;
 struct Wall;
@@ -68,47 +69,70 @@ struct EdgeG2;
 class PointG2;
 class CornerG2;
 
+
+struct DijkstraPoint {
+    DijkstraPoint(PointG2 *p_=0, int i_=0);
+    
+    PointG2 *p;
+    int     i;
+};
+
+struct DijkstraLabel {
+    DijkstraPoint   from;
+    double          val;
+    bool            visited;
+};
+
+DijkstraLabel &getDijkstraLabel(DijkstraPoint &p);
+double getDijkstraVal(const DijkstraPoint &p);
+
 struct WallG2 {
 
     Corner *to;
-    double loss;
     
-    // Let's keep these for walls
-    // double dx;
-    // double dy;
+    // Derived variables
+    double loss;
     double angle;
 };
 
 class PointG2 {
 public:
+    inline PointG2():dlabels(0) {}
+    inline ~PointG2() { if (dlabels) delete [] dlabels; }
+    
     inline double x() const { return ref->x; }
     inline double y() const { return ref->y; }
     virtual inline bool isCorner() const { return false; }
+    
+    int searchIdx(double angle) const;
     
     int        i;
     Point      *ref;
     
     // Links connect to this point
-    //  - Different to the 'sides' list kept in CornerG2, this list does not have to be sorted.
+    //  - This is a sorted list
     //  - But instead, each link should keep which section it is so that we can compute the loss easily.
     //  - Also, this helps us know which side of the wall it is at.
     std::vector<EdgeG2> links;
+    
+    // Dijkstra labels
+    DijkstraLabel* dlabels;
 };
 
 // We consider this to be directed.
 struct EdgeG2 {
     
-    PointG2     *to;
+    PointG2     *target;
+    int         target_i;
+    int         source_i;
     
+    // Derived variables
     double      loss;
-    
-    // Let's keep this for now
     double      dist;
     double      angle;
     
-    // with respect to the corner in v1.  If v1 is not a corner, then this is not valid.
+    // with respect to the corner in v1.  If v1 is not a corner, then these two are not valid.
     int         section;
-    
     int         isAlongWall;
 };
 
@@ -129,18 +153,34 @@ class DominantPath {
     
 public:
     
-    DominantPath(Floorplan *flp, int nmpt, Point *mpts);
+    DominantPath(Floorplan *flp, int nmpt, Point *mpts, double angleLoss);
     ~DominantPath();
     
     void generateG2();
     
+    void Dijkstra(double lambda, int s, int t);
+    
     void printG2(int p, double scale, double shift);
+    void printDijkstra(double lambda, int s, int t, double scale, double shift);
     
 private:
     
+    // For generateG2():
+    void initG2();
+    void linkWalls();
+    void createLinks(PointG2 *point);
+    void createLinksForCorner(CornerG2 *corner);
+    void createLinksForPoint(PointG2 *point);
+    void mergeLinks(PointG2 *point, int nEdges, EdgeG2* tmpList, bool *tmpListKeep);
+    void createLinksPostProc(PointG2 *point);
+    
+    //
+    void initDijkstra();
+    void resetDijkstra();
+    
     double getLoss(const PointG2 *p, const EdgeG2 &edge) const;
     
-    int findSection(const CornerG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;
+    int findSection(const PointG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;
     double cornerLoss(const CornerG2 *corner, int insec, int outsec) const;
     
     double _dx(const PointG2 *p, const EdgeG2 &edge) const;
@@ -162,6 +202,8 @@ private:
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
     
+    
+    double      _angleLoss;
 };
 
 #endif /* defined(__DominantPath__floorplan__) */
