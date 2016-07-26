@@ -61,10 +61,11 @@ void CornerG2::insertSide(WallG2 wall) {
 //  Class DominantPath (constructor & destructor)
 // -------------------------------------
 
-DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts, double angleLoss):
+DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts):
 _flp(flp), _nmPoints(nmpt), _mPoints(mpts),
 _nG2Points(0), _nG2Corners(0), _G2Points(0), _G2Corners(0),
-_nG2totPoints(0), _G2totPoints(0), _angleLoss(angleLoss) {
+_nG2totPoints(0), _G2totPoints(0),
+fScale(50.0), fShift(5.0), fSizeX(800), fSizeY(800) {
     
 }
 
@@ -326,7 +327,7 @@ void DominantPath::mergeLinks(PointG2 *point, int nEdges, EdgeG2 *tmpList) {
         }
         
         //
-        if (std::abs(tmpList[j].angle - tmpList[k].angle) > 1.0E-6) {
+        if (std::abs(tmpList[j].angle - tmpList[k].angle) > TINY) {
             
             // If two lines have different angle, keep j.
             
@@ -504,7 +505,7 @@ double DominantPath::getLoss(const PointG2 *p, const EdgeG2 &edge) const {
         double dv = wall->c2->y - v;
         
         double z = dx*dv-dy*du;
-        if (std::abs(z)>1.0E-6) {
+        if (std::abs(z) > TINY) {
             double r = ((y-v)*dx + (u-x)*dy)/z;
             double t = ((u-x)*dv + (y-v)*du)/z;
             if (r>0.0 && r<1.0 && t>0.0 && t<1.0) {
@@ -578,63 +579,6 @@ double DominantPath::_dx(const PointG2 *p, const EdgeG2 &edge) const {
 
 double DominantPath::_dy(const PointG2 *p, const EdgeG2 &edge) const {
     return (edge.target->y() - p->ref->y);
-}
-
-// Check if the data structure is correct
-void DominantPath::printG2(int p, double scale, double shift) {
-    cv::Mat image(800,800,CV_8UC3,cv::Scalar(255,255,255));
-    
-    for (int i=0; i < _nG2totPoints; i++) {
-        PointG2 *point = _G2totPoints[i];
-        cv::Point center(point->ref->x*scale+shift, point->ref->y*scale+shift);
-        cv::circle(image, center, 3, cv::Scalar(0,0,0));
-    }
-    
-    for (int i=0; i < _flp->getNumWalls(); i++) {
-        Wall *wall = _flp->getWallPtr(i);
-        cv::Point p1(wall->c1->x*scale+shift, wall->c1->y*scale+shift);
-        cv::Point p2(wall->c2->x*scale+shift, wall->c2->y*scale+shift);
-        cv::line(image, p1, p2, cv::Scalar(0,0,0), 2);
-    }
-    
-    int j = p;
-    PointG2 *point = _G2totPoints[j];
-    cv::Point center(point->ref->x*scale+shift, point->ref->y*scale+shift);
-    for (int i=0; i < point->links.size(); i++) {
-        EdgeG2 edge = point->links[i];
-        double x = point->x() + edge.dist * std::cos(edge.angle);
-        double y = point->y() + edge.dist * std::sin(edge.angle);
-        cv::Point p2(x*scale+shift, y*scale+shift);
-        cv::line(image, center, p2, cv::Scalar(255,0,0));
-    }
-    
-#ifdef SHOW_DEBUG
-    // For debugging
-    if (point->isCorner()) {
-        CornerG2 *corner = reinterpret_cast<CornerG2 *>(point);
-        printf("--Adjacent Walls--\n   Angle, Loss\n");
-        for (int i=0; i < corner->walls.size(); i++) {
-            printf("%+.5f, %.3f\n", corner->walls[i].angle, corner->walls[i].loss);
-        }
-    }
-    printf("\nTotal links: %d\n", (int)point->links.size());
-    //std::sort(point->links.begin(), point->links.end(), mycmp_edge);
-    printf("   Angle, Sec,     Dist,  Loss\n");
-    for (int i=0; i < point->links.size(); i++) {
-        printf("%+.5f, %3d, % 3.5f, %.3e, %d\n", point->links[i].angle, point->links[i].section, point->links[i].dist, point->links[i].loss, point->links[i].isAlongWall);
-    }
-    
-    /*
-     if (point->isCorner()) {
-     CornerG2 *corner = reinterpret_cast<CornerG2 *>(point);
-     if (corner->walls.size()>1) std::cout << cornerLoss(corner, 1, 0) << std::endl;
-     }
-     */
-#endif
-    
-    namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-    cv::imshow( "Display window", image );
-    cv::waitKey(0);
 }
 
 

@@ -12,6 +12,9 @@
 #include <vector>
 #include <set>
 
+#define TINY 1.0E-6
+#define USE_OPEN_CV
+
 // ---------------------------------
 //  Data structure for floorplan
 // ---------------------------------
@@ -46,20 +49,20 @@ public:
     Floorplan();
     ~Floorplan();
     
-    void genRandomFloorplan(int x, int y, double loss);
-    
-    void printFloorplan();
+    void genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed = 0);
     
     inline int getNumCorners() const { return _nCorners; }
     inline Corner *getCornerPtr(int i) const { return &_corners[i]; }
     inline int getNumWalls() const { return _nWalls; }
     inline Wall *getWallPtr(int i) const { return &_walls[i]; }
+    inline double getAngleLoss() const { return _angleLoss; }
     
-    // TODO:
-    // save
-    // load
+    int save(const char *filename) const;
+    int load(const char *filename);
     
 private:
+    
+    double  _angleLoss; // angle loss per radian
     
     int     _nCorners;
     int     _nWalls;
@@ -111,6 +114,19 @@ struct DijkstraLabel {
     
     double          l_e;
     double          d_e;
+};
+
+struct Path {
+    
+    inline void reset() {
+        v.clear();
+        L = 0.0;
+        D = 0.0;
+    }
+    
+    std::vector<DijkstraPoint> v;
+    double L;
+    double D;
 };
 
 // Priorty queue
@@ -169,7 +185,7 @@ class PointG2 {
     // ---------------------------------------------
     
 public:
-    inline PointG2():dlabels(0) {}
+    inline PointG2():ref(0),dlabels(0) {}
     inline ~PointG2() { if (dlabels) delete [] dlabels; }
     
     inline double x() const { return ref->x; }
@@ -242,7 +258,13 @@ public:
     std::vector<WallG2> walls;
 };
 
+#ifdef USE_OPEN_CV
 
+namespace cv {
+    class Mat;
+}
+
+#endif
 
 // -------------------------------------
 //  Main class
@@ -259,35 +281,60 @@ public:
     //  - flp: pointer to a Floorplan instance
     //  - nmpt: number of measurement points
     //  - mpts: a list of the measurement points
-    //  - angleLoss: difraction loss per unit rad (dB)
     // ---------------------------------------------
-    DominantPath(Floorplan *flp, int nmpt, Point *mpts, double angleLoss);
+    DominantPath(Floorplan *flp, int nmpt, Point *mpts);
     ~DominantPath();
     
     // This function generates G2 from Floorplan *_flp
     void generateG2();
     
     // This function performs Dijkstra algorithm to find the shortest path from s to t
+    // ---------------------------------------------
+    // Inputs:
     //   - lambda: parameter for mixing two weights.  The weight will be L + labmda*D
     //   - s: index of the source measurement point
     //   - t: index of the destination measurement point
+    //   - path: reference to the variable for storing the returned path
     // ---------------------------------------------
-    void Dijkstra(double lambda, int s, int t);
+    // Output:
+    //   - number of relaxations
+    // ---------------------------------------------
+    int Dijkstra(double lambda, int s, int t, Path &path);
+    
+    // This function finds all breakpoints for s-t paths
+    // ---------------------------------------------
+    // Input:
+    //   - s: index of the source measurement point
+    //   - t: index of the destination measurement point
+    //   - limit: capacity of the list 'paths'
+    //   - paths: a list of paths for storing the output paths.
+    //   - npaths: reference the the variable for storing the number of breakpoints.
+    // Output:
+    //   - number of Dijkstra relaxations
+    int BreakPoints(int s, int t, int limit, Path *paths, int &npaths);
+    
+#ifdef USE_OPEN_CV
+    
+public:
+    
+    void printFloorplan();
     
     // This function prints part of G2
     //   - p: will plot the edges incident from point indexed p
-    //   - scale: the amount to scale the plot
-    //   - shift: the amount to shift the plot
     // ---------------------------------------------
-    void printG2(int p, double scale, double shift);
+    void printG2(int p);
     
     // This function prints the result of Dijkstra
-    //   - s: index of the source measurement point
-    //   - t: index of the destination measurement point
-    //   - scale: the amount to scale the plot
-    //   - shift: the amount to shift the plot
+    //   - npaths: number of paths to be printed
+    //   - paths: the list for the paths to be printed
     // ---------------------------------------------
-    void printDijkstra(int s, int t, double scale, double shift, double lambda);
+    void printPaths(int npaths, Path* paths);
+    
+private:
+    
+    void makeFloorplanImage(cv::Mat &image);
+    
+#endif
     
 private:
     
@@ -304,8 +351,9 @@ private:
     // For Dijkstra:
     void initDijkstra();
     void resetDijkstra();
-    void Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw);
+    int Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
+    void backTrack(double lambda, int s, int t, Path &path);
     
     // Helper functions:
     int findSection(const PointG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;
@@ -313,6 +361,9 @@ private:
     
     double _dx(const PointG2 *p, const EdgeG2 &edge) const;
     double _dy(const PointG2 *p, const EdgeG2 &edge) const;
+    double parametricWeight(double l, double d, double lambda);
+    
+    
     
     Floorplan   *_flp;
     
@@ -330,8 +381,11 @@ private:
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
     
-    
-    double      _angleLoss;
+public:
+    double      fScale;
+    double      fShift;
+    double      fSizeX;
+    double      fSizeY;
 };
 
 #endif /* defined(__DominantPath__floorplan__) */

@@ -10,12 +10,7 @@
 #include <chrono>
 #include <random>
 #include <iostream>
-
-#include <opencv2/imgproc.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
-#define SHOW_DEBUG
+#include <cassert>
 
 
 Floorplan::Floorplan(): _nCorners(0), _nWalls(0), _corners(0), _walls(0) {
@@ -27,7 +22,7 @@ Floorplan::~Floorplan() {
     if (_walls)     delete [] _walls;
 }
 
-void Floorplan::genRandomFloorplan(int x, int y, double loss) {
+void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed) {
     
     // -- Form a random spanning tree
     int n_visited = 0;
@@ -42,7 +37,6 @@ void Floorplan::genRandomFloorplan(int x, int y, double loss) {
     
     // Random number generator
     //unsigned seed = (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
-    unsigned seed = 0;
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
     
@@ -137,14 +131,14 @@ void Floorplan::genRandomFloorplan(int x, int y, double loss) {
     for (int i=0; i < x; i++) {
         _walls[curptr].c1 = &_corners[i];
         _walls[curptr].c2 = &_corners[i+1];
-        _walls[curptr].loss = loss;
+        _walls[curptr].loss = wallloss;
         curptr++;
     }
     
     for (int i=0; i < y; i++) {
         _walls[curptr].c1 = &_corners[i*(x+1)];
         _walls[curptr].c2 = &_corners[(i+1)*(x+1)];
-        _walls[curptr].loss = loss;
+        _walls[curptr].loss = wallloss;
         curptr++;
     }
     
@@ -153,17 +147,18 @@ void Floorplan::genRandomFloorplan(int x, int y, double loss) {
             if (vedges[i*x+j]) {
                 _walls[curptr].c1 = &_corners[i*(x+1)+j+1];
                 _walls[curptr].c2 = &_corners[(i+1)*(x+1)+j+1];
-                _walls[curptr].loss = loss;
+                _walls[curptr].loss = wallloss;
                 curptr++;
             }
             if (hedges[i*x+j]) {
                 _walls[curptr].c1 = &_corners[(i+1)*(x+1)+j];
                 _walls[curptr].c2 = &_corners[(i+1)*(x+1)+j+1];
-                _walls[curptr].loss = loss;
+                _walls[curptr].loss = wallloss;
                 curptr++;
             }
         }
     
+    _angleLoss = angleloss;
     
     delete [] visited;
     delete [] visited_list;
@@ -173,27 +168,61 @@ void Floorplan::genRandomFloorplan(int x, int y, double loss) {
     delete [] whedges;
 }
 
-// Check if the data structure is correct
-void Floorplan::printFloorplan() {
-    cv::Mat image(600,600,CV_8UC1,cv::Scalar(255));
-    int scale = 40;
-    int shift = 5;
+int Floorplan::save(const char *filename) const {
     
-    for (int i=0; i < _nCorners; i++) {
-        Corner *corner = &_corners[i];
-        cv::Point center(corner->x*scale+shift, corner->y*scale+shift);
-        cv::circle(image, center, 3, cv::Scalar(0));
+    FILE *file;
+    file = fopen(filename, "w+");
+    
+    if (file == NULL) return -1;
+    
+    fprintf(file, "%d %d %f\n", _nCorners, _nWalls, _angleLoss);
+    for (int i = 0; i < _nCorners; i++) {
+        fprintf(file, "c %d %lf %lf\n", _corners[i].i, _corners[i].x, _corners[i].y);
+    }
+    for (int i = 0; i < _nWalls; i++) {
+        fprintf(file, "w %d %d %lf\n", _walls[i].c1->i, _walls[i].c2->i, _walls[i].loss);
+    }
+    fclose(file);
+    
+    return 0;
+}
+
+int Floorplan::load(const char *filename) {
+    FILE *file;
+    file = fopen(filename, "r");
+    
+    if (file == NULL) return -1;
+    
+    if (fscanf(file, "%d %d %lf", &_nCorners, &_nWalls, &_angleLoss) != 3) return -1;
+    
+    _corners = new Corner[_nCorners];
+    _walls = new Wall[_nWalls];
+    
+    int wptr = 0;
+    while ( ! feof(file) ) {
+        char buf;
+        if (fscanf(file, "%c", &buf) != 1) return -1;
+        if (buf == 'c') {
+            int ci;
+            double cx, cy;
+            if (fscanf(file, "%d %lf %lf", &ci, &cx, &cy) != 3) return -1;
+            _corners[ci].i = ci;
+            _corners[ci].x = cx;
+            _corners[ci].y = cy;
+        }
+        if (buf == 'w') {
+            int c1, c2;
+            double l;
+            if (fscanf(file, "%d %d %lf", &c1, &c2, &l) != 3) return -1;
+            _walls[wptr].c1 = &_corners[c1];
+            _walls[wptr].c2 = &_corners[c2];
+            _walls[wptr].loss = l;
+            wptr++;
+        }
     }
     
-    for (int i=0; i < _nWalls; i++) {
-        Wall *wall = &_walls[i];
-        cv::Point p1(wall->c1->x*scale+shift, wall->c1->y*scale+shift);
-        cv::Point p2(wall->c2->x*scale+shift, wall->c2->y*scale+shift);
-        cv::line(image, p1, p2, cv::Scalar(0), 2);
-    }
+    assert(wptr == _nWalls);
     
-    namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-    cv::imshow( "Display window", image );
-    cv::waitKey(0);
+    return 0;
 }
 
