@@ -27,10 +27,10 @@ int main(int argc, const char * argv[]) {
     
     // This program finds the paths from pts[0] to pts[1]
     Point pts[2];
-    pts[1].x = 2.5;
-    pts[1].y = 1.5;
-    pts[0].x = 9.3;
-    pts[0].y = 9.3;
+    pts[0].x = 2.5;
+    pts[0].y = 1.5;
+    pts[1].x = 9.3;
+    pts[1].y = 12.3;
     
     int limit = 50;
     
