@@ -25,6 +25,7 @@ int main(int argc, const char * argv[]) {
     const char *save = 0;
     const char *load = 0;
     
+    // This program finds the paths from pts[0] to pts[1]
     Point pts[2];
     pts[1].x = 2.5;
     pts[1].y = 1.5;
