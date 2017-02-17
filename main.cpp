@@ -6,6 +6,8 @@
 //  Copyright (c) 2016年 Ger Yang. All rights reserved.
 //
 
+#include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <cstring>
 #include "floorplan.h"
@@ -24,6 +26,8 @@ int main(int argc, const char * argv[]) {
 
     const char *save = 0;
     const char *load = 0;
+
+    int display_paths = 1;
 
     // This program finds the paths from pts[0] to pts[1]
     Point pts[2];
@@ -47,6 +51,7 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-p0y") == 0) pts[0].y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-p1x") == 0) pts[1].x = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-p1y") == 0) pts[1].y = atof(argv[++argi]);
+        else if (strcmp(argv[argi], "-dp") == 0) display_paths = atoi(argv[++argi]);
 
         argi++;
     }
@@ -72,7 +77,9 @@ int main(int argc, const char * argv[]) {
     int npaths;
     int count = dmp.BreakPoints(0, 1, limit, paths, npaths);
     printf("%d relaxation performed.\n", count);
-    dmp.printPaths(npaths, paths);
+    if (display_paths) {
+        dmp.printPaths(npaths, paths);
+    }
 
     delete [] paths;
 

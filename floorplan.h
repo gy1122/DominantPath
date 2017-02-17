@@ -15,6 +15,10 @@
 #define TINY 1.0E-6
 #define USE_OPEN_CV
 
+#ifdef USE_OPEN_CV
+#include <opencv2/highgui/highgui.hpp>
+#endif  // USE_OPEN_CV
+
 // ---------------------------------
 //  Data structure for floorplan
 // ---------------------------------
@@ -94,7 +98,7 @@ struct DijkstraPoint {
     // If p is a measurement point, then i should always be zero.
     // ---------------------------------------------
 
-    DijkstraPoint(PointG2 *p_=0, int i_=0);
+    explicit DijkstraPoint(PointG2 *p_=0, int i_=0);
 
     PointG2 *p;
     int     i;
@@ -147,7 +151,7 @@ private:
 
 public:
     inline void add(DijkstraPoint p) { _queue.insert(p); }
-    inline size_t size() const { return _queue.size(); }
+    inline my_set::size_type size() const { return _queue.size(); }
 
     DijkstraPoint extract_min();
     void decrease_key(DijkstraPoint &p, double newval);
@@ -216,7 +220,7 @@ struct EdgeG2 {
     // We consider each edge in G2 as directed.
     //
     // When constructing an instance of this struct,
-    // it is gauranteed that an identical EdgeG2 instance with reversed direction
+    // it is guaranteed that an identical EdgeG2 instance with reversed direction
     // is also constructed.
     //
     // target_i : the index of the socket in the target node
@@ -351,7 +355,7 @@ private:
     // For Dijkstra:
     void initDijkstra();
     void resetDijkstra();
-    int Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw);
+    int Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
     void backTrack(double lambda, int s, int t, Path &path);
 

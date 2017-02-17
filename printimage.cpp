@@ -10,8 +10,6 @@
 
 #ifdef USE_OPEN_CV
 
-#include <opencv2/imgproc.hpp>
-#include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #define SHOW_DEBUG
@@ -54,7 +52,7 @@ void DominantPath::printG2(int p) {
     int j = p;
     PointG2 *point = _G2totPoints[j];
     cv::Point center(point->x() * fScale + fShift, point->y() * fScale + fShift);
-    for (int i=0; i < point->links.size(); i++) {
+    for (int i=0; i < (int) point->links.size(); i++) {
         EdgeG2 edge = point->links[i];
         double x = point->x() + edge.dist * std::cos(edge.angle);
         double y = point->y() + edge.dist * std::sin(edge.angle);
@@ -67,14 +65,14 @@ void DominantPath::printG2(int p) {
     if (point->isCorner()) {
         CornerG2 *corner = reinterpret_cast<CornerG2 *>(point);
         printf("--Adjacent Walls--\n   Angle, Loss\n");
-        for (int i=0; i < corner->walls.size(); i++) {
+        for (int i=0; i < (int) corner->walls.size(); i++) {
             printf("%+.5f, %.3f\n", corner->walls[i].angle, corner->walls[i].loss);
         }
     }
 
     printf("\nTotal links: %d\n", (int)point->links.size());
     printf("   Angle, Sec,     Dist,  Loss\n");
-    for (int i=0; i < point->links.size(); i++) {
+    for (int i=0; i < (int) point->links.size(); i++) {
         printf("%+.5f, %3d, % 3.5f, %.3e, %d\n", point->links[i].angle, point->links[i].section, point->links[i].dist, point->links[i].loss, point->links[i].isAlongWall);
     }
 
@@ -101,7 +99,7 @@ void DominantPath::printPaths(int npaths, Path *paths) {
         printf("(L=%f, D=%f): ", paths[i].L, paths[i].D);
         printf("%d", ptr1.p->i);
 
-        for (int j=1; j < paths[i].v.size(); j++) {
+        for (int j=1; j < (int) paths[i].v.size(); j++) {
             DijkstraPoint ptr2 = paths[i].v[j];
             cv::Point p1(ptr1.p->x() * fScale + fShift, ptr1.p->y() * fScale + fShift);
             cv::Point p2(ptr2.p->x() * fScale + fShift, ptr2.p->y() * fScale + fShift);

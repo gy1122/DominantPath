@@ -15,10 +15,6 @@
 #include <cstdio>
 #include <iostream>
 
-#include <opencv2/imgproc.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
 //#define SHOW_DEBUG
 
 
@@ -32,6 +28,10 @@
 void DominantPath::initDijkstra() {
     for (int i=0; i < _nG2totPoints; i++) {
         PointG2 *point = _G2totPoints[i];
+        // Avoid memory leak if initDijkstra is called twice
+        if (point->dlabels) {
+          delete [] point->dlabels;
+        }
         if (point->isCorner()) {
             point->dlabels = new DijkstraLabel[point->links.size()];
         } else {
@@ -47,7 +47,7 @@ void DominantPath::resetDijkstra() {
     for (int i=0; i < _nG2totPoints; i++) {
         PointG2 *point = _G2totPoints[i];
         if (point->isCorner()) {
-            for (int j=0; j < point->links.size(); j++) {
+            for (int j=0; j < (int) point->links.size(); j++) {
                 point->dlabels[j].from.p = 0;
                 point->dlabels[j].from.i = 0;
                 point->dlabels[j].val = INFINITY;
@@ -143,7 +143,7 @@ int decr(CornerG2 *corner, int i) {
     return corner->edecr(i);
 }
 
-int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw) {
+int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, double angle, double lambda, bool cw) {
 
     // This function implements the "radar" data structure.
 
@@ -269,7 +269,7 @@ int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
 
         } else {
 
-            for (int i=0; i < point->links.size(); i++) {
+            for (int i=0; i < (int) point->links.size(); i++) {
                 EdgeG2 edge = point->links[i];
                 relaxEdge(Q, dpoint, edge, lambda);
                 count++;
@@ -321,13 +321,13 @@ void DominantPath::backTrack(double lambda, int s, int t, Path &path) {
     path.v.push_back(ptr);
 
 #ifdef SHOW_DEBUG
-    printf("L=%f  D=%f      F=%f", path.L, path.D, path.L+lambda*path.D);
+    printf("L=%f  D=%f      F=%f\n", path.L, path.D, path.L+lambda*path.D);
 #endif
 
     std::reverse(path.v.begin(), path.v.end());
 }
 
-bool mycmp_bp(Path &p1, Path &p2) {
+bool mycmp_bp(const Path &p1, const Path &p2) {
     return p1.L < p2.L;
 }
 
@@ -350,7 +350,7 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
         if (npaths == limit) {
 #ifdef SHOW_DEBUG
-            printf("Too many breakpoints.");
+            printf("Too many breakpoints.\n");
 #endif
             break;
         }
@@ -396,7 +396,3 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
     return count;
 }
-
-
-
-
