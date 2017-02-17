@@ -360,6 +360,10 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
         double dL = (paths[sp.first].L - paths[sp.second].L);
         double dD = (paths[sp.first].D - paths[sp.second].D);
+        if (std::abs(dL) < TINY || std::abs(dD) < TINY) {
+            // avoid new lambda=0 or lambda=inf queries
+            continue;
+        }
         double lambda = -dL/dD;
 
         assert(dL <= 0);
