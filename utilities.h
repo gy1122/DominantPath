@@ -11,26 +11,26 @@
 
 
 class BinaryHeap {
-    
+
     class BinaryHeapNode {
     public:
         BinaryHeapNode(double w = 0.0);
         virtual bool operator<(const BinaryHeapNode &rhs);
         virtual void setVal(double w);
-        
+
         inline BinaryHeapNode *left() { return _left; }
         inline BinaryHeapNode *right() { return _right; }
-        
+
     private:
         double  _weight;
         BinaryHeapNode *_left;
         BinaryHeapNode *_right;
     };
-    
+
 public:
-    
+
 private:
-    
+
 };
 
 #endif /* defined(__DominantPath__utilities__) */

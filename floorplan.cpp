@@ -14,7 +14,7 @@
 
 
 Floorplan::Floorplan(): _nCorners(0), _nWalls(0), _corners(0), _walls(0) {
-    
+
 }
 
 Floorplan::~Floorplan() {
@@ -23,39 +23,39 @@ Floorplan::~Floorplan() {
 }
 
 void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed) {
-    
+
     // -- Form a random spanning tree
     int n_visited = 0;
     int  *visited = new int[x*y];
     int  *visited_list = new int[x*y];
     bool *vedges = new bool[x*y];
     bool *hedges = new bool[x*y];
-    
+
     for (int i=0; i < x*y; i++) visited[i] = false;
     for (int i=0; i < x*y; i++) vedges[i] = true;
     for (int i=0; i < x*y; i++) hedges[i] = true;
-    
+
     // Random number generator
     //unsigned seed = (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
-    
+
     // Generate random edge weights
     double *wvedges = new double[x*y];
     double *whedges = new double[x*y];
     for (int i=0; i < x*y; i++) wvedges[i] = distribution(generator);
     for (int i=0; i < x*y; i++) whedges[i] = distribution(generator);
-    
-    
+
+
     // visit (0,0)
     n_visited++;
     visited_list[0] = 0;
     visited[0] = true;
-    
+
     // Naive Prim's algorithm, without using priority queues
     const double INF = 1.0E9;
     while (n_visited < x*y) {
-        
+
         double min_cost = INF;
         int min_node = -1;
         int min_dir = -1; // direction
@@ -63,7 +63,7 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
             int j = visited_list[i];
             int cx = j % x;
             int cy = j / x;
-            
+
             // check adjacent nodes of visited nodes
             if (cx>0 && !visited[j-1] && wvedges[j-1]<min_cost) {
                 min_cost = wvedges[j-1];
@@ -86,7 +86,7 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
                 min_dir = 4;
             }
         }
-        
+
         switch (min_dir) {
             case 1: visited[min_node-1] = true; vedges[min_node-1] = false; visited_list[n_visited] = min_node-1;
                 break;
@@ -97,13 +97,13 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
             case 4: visited[min_node+x] = true; hedges[min_node] = false; visited_list[n_visited] = min_node+x;
         }
         n_visited++;
-        
+
     }
-    
-    
+
+
     // OK, now we have a random spanning tree.
     // Next, generate the floorplan graph:
-    
+
     // -- Generate corners
     _nCorners = (x+1)*(y+1);
     _corners = new Corner[_nCorners];
@@ -112,7 +112,7 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
         _corners[i].x = i % (x+1);
         _corners[i].y = i / (x+1);
     }
-    
+
     // -- Generate walls
     //    first count the number of walls
     _nWalls = x+y;
@@ -122,26 +122,26 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
     for (int i=0; i < y; i++)
         for (int j=0; j < x; j++)
             if (hedges[i*x+j]) _nWalls++;
-    
+
     //    allocate the memory
     _walls = new Wall[_nWalls];
-    
+
     int curptr = 0;
-    
+
     for (int i=0; i < x; i++) {
         _walls[curptr].c1 = &_corners[i];
         _walls[curptr].c2 = &_corners[i+1];
         _walls[curptr].loss = wallloss;
         curptr++;
     }
-    
+
     for (int i=0; i < y; i++) {
         _walls[curptr].c1 = &_corners[i*(x+1)];
         _walls[curptr].c2 = &_corners[(i+1)*(x+1)];
         _walls[curptr].loss = wallloss;
         curptr++;
     }
-    
+
     for (int i=0; i < y; i++)
         for (int j=0; j < x; j++) {
             if (vedges[i*x+j]) {
@@ -157,9 +157,9 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
                 curptr++;
             }
         }
-    
+
     _angleLoss = angleloss;
-    
+
     delete [] visited;
     delete [] visited_list;
     delete [] vedges;
@@ -169,12 +169,12 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
 }
 
 int Floorplan::save(const char *filename) const {
-    
+
     FILE *file;
     file = fopen(filename, "w+");
-    
+
     if (file == NULL) return -1;
-    
+
     fprintf(file, "%d %d %f\n", _nCorners, _nWalls, _angleLoss);
     for (int i = 0; i < _nCorners; i++) {
         fprintf(file, "c %d %lf %lf\n", _corners[i].i, _corners[i].x, _corners[i].y);
@@ -183,21 +183,21 @@ int Floorplan::save(const char *filename) const {
         fprintf(file, "w %d %d %lf\n", _walls[i].c1->i, _walls[i].c2->i, _walls[i].loss);
     }
     fclose(file);
-    
+
     return 0;
 }
 
 int Floorplan::load(const char *filename) {
     FILE *file;
     file = fopen(filename, "r");
-    
+
     if (file == NULL) return -1;
-    
+
     if (fscanf(file, "%d %d %lf", &_nCorners, &_nWalls, &_angleLoss) != 3) return -1;
-    
+
     _corners = new Corner[_nCorners];
     _walls = new Wall[_nWalls];
-    
+
     int wptr = 0;
     while ( ! feof(file) ) {
         char buf;
@@ -220,9 +220,9 @@ int Floorplan::load(const char *filename) {
             wptr++;
         }
     }
-    
+
     assert(wptr == _nWalls);
-    
+
     return 0;
 }
 

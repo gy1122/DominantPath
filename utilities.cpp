@@ -9,7 +9,7 @@
 #include "utilities.h"
 
 BinaryHeap::BinaryHeapNode::BinaryHeapNode(double w):_weight(w), _left(0), _right(0) {
-    
+
 }
 
 bool BinaryHeap::BinaryHeapNode::operator<(const BinaryHeapNode &rhs) {

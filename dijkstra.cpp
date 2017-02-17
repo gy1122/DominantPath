@@ -144,44 +144,44 @@ int decr(CornerG2 *corner, int i) {
 }
 
 int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, double start_idx, double angle, double lambda, bool cw) {
-    
+
     // This function implements the "radar" data structure.
-    
+
     int count = 0;
-    
+
     CornerG2 *corner = reinterpret_cast<CornerG2 *>(dpoint.p);
-    
+
     // Compute in sec
     int insec = corner->links[dpoint.i].section;
-    
+
     // Direction
     int (*direc)(CornerG2 *, int) = cw? &incr : &decr;
     int (*rdirec)(CornerG2 *, int) = cw? &decr : &incr;
-    
+
     // Terminating index
     int term_idx = rdirec(corner, start_idx);
-    
+
     // Start a clockwise / counterclockwise swiping
     for (int i = start_idx; i != term_idx; i = direc(corner,i)) {
-        
+
         DijkstraPoint epoint(corner, i);
         if (getDijkstraLabel(epoint).visited) break;
-        
+
         EdgeG2 *edge = &corner->links[i];
-        
+
         // Compute wall loss
         //  I should better use loss table
         int outsec = corner->links[i].section;
         double wall_loss = cornerLoss(corner, insec, outsec);
-        
+
         double dAngle = cw? anglediff(edge->angle, angle) : anglediff(angle, edge->angle);
         double loss = wall_loss + _flp->getAngleLoss() * dAngle;
-        
+
         double currad = getDijkstraRadar(epoint);
         double newrad = getDijkstraVal(dpoint) + parametricWeight(loss, 0, lambda);
-        
+
         count++;
-        
+
         // Update radar but not update Dijkstra label for the socket
         if (newrad < currad) {
             //Q.decrease_key(epoint, newval);
@@ -189,18 +189,18 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
             //getDijkstraLabel(epoint).from = dpoint;
             //getDijkstraLabel(epoint).l_e = loss;
             //getDijkstraLabel(epoint).d_e = 0.0;
-            
+
             // Try to propagate Dijkstra label one step ahead
             DijkstraPoint epoint2(edge->target,
                                   edge->target_i);
-            
+
             double newval2 = newrad + parametricWeight(edge->loss, edge->dist, lambda);
-            
+
             // check if this can be propagated one step forward
             if (newval2 < getDijkstraVal(epoint2)) {
-                
+
                 assert(!getDijkstraLabel(epoint2).visited);
-                
+
                 Q.decrease_key(epoint2, newval2);
                 getDijkstraLabel(epoint2).from = dpoint;
                 getDijkstraLabel(epoint2).l_e = loss + edge->loss;
@@ -208,20 +208,20 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
             }
         } else break;
     }
-    
+
     return count;
 }
 
 void DominantPath::relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda) {
-    
+
     DijkstraPoint epoint(edge.target, edge.target_i);
-    
+
     if (getDijkstraLabel(epoint).visited) return;
-    
+
     // relax edge.target
     double val = getDijkstraVal(epoint);
     double newval = getDijkstraLabel(dpoint).val + parametricWeight(edge.loss, edge.dist, lambda);
-    
+
     if (newval < val) {
         Q.decrease_key(epoint, newval);
         getDijkstraLabel(epoint).from = dpoint;
@@ -231,93 +231,93 @@ void DominantPath::relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edg
 }
 
 int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
-    
+
     const double pi = std::abs(std::atan2(0,-1));
-    
+
     resetDijkstra();
-    
+
     Priority_Queue Q;
-    
+
     // We don't add all nodes into Q in the beginning but do that on the fly
-    
+
     DijkstraPoint source(_G2totPoints[s]);
     getDijkstraLabel(source).val = 0.0;
     Q.add(source);
-    
+
     // This is the counter for the number of relaxations
     int count = 0;
-    
+
     while (Q.size() > 0) {
-        
+
         DijkstraPoint dpoint = Q.extract_min();
         getDijkstraLabel(dpoint).visited = true;
-        
+
         PointG2 *point = dpoint.p;
-        
+
         if (point->i == t) break;
-        
+
         if (point->isCorner()) {
-            
+
             double angle = point->links[dpoint.i].angle;
             if (angle > 0) angle -= pi;
             else angle += pi;
-            
+
             int start_idx = point->searchIdx(angle);
-            
+
             count += Dijkstra_cornerSwipe(Q, dpoint, point->eincr(start_idx), angle, lambda, true);
             count += Dijkstra_cornerSwipe(Q, dpoint, start_idx, angle, lambda, false);
-        
+
         } else {
-            
+
             for (int i=0; i < point->links.size(); i++) {
                 EdgeG2 edge = point->links[i];
                 relaxEdge(Q, dpoint, edge, lambda);
                 count++;
             }
-            
+
         }
-        
+
     }
-    
+
     backTrack(lambda, s, t, path);
-    
+
     // Return the number of relaxations
     return count;
-    
+
 }
 
 void DominantPath::backTrack(double lambda, int s, int t, Path &path) {
-    
+
     path.reset();
     DijkstraPoint ptr(_G2totPoints[t], 0);
-    
+
     while (ptr.p->i != s) {
         DijkstraPoint prevPoint = getDijkstraLabel(ptr).from;
-        
+
         path.v.push_back(ptr);
-        
+
 #ifdef SHOW_DEBUG
         printf("%3d %3d %f << %3d %3d :: %+.8f :: %f %f \n",
                ptr.p->i,
                ptr.i,
                //ptr.p == prevPoint.p? getDijkstraRadar(ptr): getDijkstraVal(ptr),
                getDijkstraVal(ptr),
-               
+
                prevPoint.p->i,
                prevPoint.i,
                //dpoint.p != nextPoint.p && nextPoint.p->isCorner()? getDijkstraRadar(nextPoint): getDijkstraVal(nextPoint),
-               
+
                prevPoint.p->links[prevPoint.i].angle,
                getDijkstraLabel(ptr).l_e,
                getDijkstraLabel(ptr).d_e);
 #endif
-        
+
         path.L += getDijkstraLabel(ptr).l_e;
         path.D += getDijkstraLabel(ptr).d_e;
-        
+
         ptr = prevPoint;
     }
-    
+
     path.v.push_back(ptr);
 
 #ifdef SHOW_DEBUG
@@ -334,40 +334,40 @@ bool mycmp_bp(Path &p1, Path &p2) {
 // This function finds all breakpoints for s-t paths.
 int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths) {
     int count = 0;
-    
+
     typedef std::pair<int,int> spair;
     std::queue<spair> queue;
-    
+
     npaths = 0;
-    
+
     // L + lambda * D
-    
+
     count += Dijkstra(0, s, t, paths[npaths++]); // L
     count += Dijkstra(INFINITY, s, t, paths[npaths++]);  // D
     queue.push(spair(0,1));
-    
+
     while (!queue.empty()) {
-        
+
         if (npaths == limit) {
 #ifdef SHOW_DEBUG
             printf("Too many breakpoints.");
 #endif
             break;
         }
-        
+
         spair sp = queue.front();
         queue.pop();
-        
+
         double dL = (paths[sp.first].L - paths[sp.second].L);
         double dD = (paths[sp.first].D - paths[sp.second].D);
         double lambda = -dL/dD;
-        
+
         assert(dL <= 0);
         assert(dD >= 0);
-        
+
         Path path;
         count += Dijkstra(lambda, s, t, path);
-        
+
 #ifdef SHOW_DEBUG
         printf("(%d, %d) %f: (%f, %f) -- (%f, %f)  ",
                sp.first, sp.second, lambda,
@@ -375,25 +375,25 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
                paths[sp.second].L, paths[sp.second].D);
         printf("path %d: L=%f   D=%f \n", npaths, path.L, path.D);
 #endif
-        
+
         if (std::abs(paths[sp.first].L-path.L) < TINY &&
             std::abs(paths[sp.first].D-path.D) < TINY)
             continue;
         if (std::abs(paths[sp.second].L-path.L) < TINY &&
             std::abs(paths[sp.second].D-path.D) < TINY)
             continue;
-        
+
 #ifdef SHOW_DEBUG
         printf("add path\n");
 #endif
-        
+
         paths[npaths++] = path;
         queue.push(spair(sp.first, npaths-1));
         queue.push(spair(npaths-1, sp.second));
     }
-    
+
     std::sort(paths, paths+npaths, mycmp_bp);
-    
+
     return count;
 }
 
