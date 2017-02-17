@@ -225,12 +225,16 @@ void DominantPath::createLinksForCorner(CornerG2 *corner) {
 
     int wallId = 0;
 
+    corner->section_start.resize (nAdjWalls);
+
     // find which section it is in
     for (int j=0; j < (int) corner->links.size(); j++) {
         if (corner->links[j].isAlongWall == 0) {
             corner->links[j].section = wallId % nAdjWalls;
         } else if (corner->links[j].isAlongWall == 1) {
             wallId++;
+        } else if (corner->links[j].isAlongWall == 2) {
+            corner->section_start[wallId % nAdjWalls] = j;
         }
     }
 

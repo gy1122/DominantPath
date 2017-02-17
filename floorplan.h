@@ -199,6 +199,15 @@ public:
     inline int eincr(int i) const { return (i+1) % links.size(); }
     inline int edecr(int i) const { return (i + links.size() -1) % (int)links.size(); }
 
+    // is j between i and k in the cw order?
+    inline bool between(bool cw, int i, int j, int k) const {
+      if (cw) {
+        return ((i <= j && j < k) || (k <= i && i <= j) || (j < k && k <= i));
+      } else {
+        return ((i >= j && j > k) || (k >= i && i >= j) || (j > k && k >= i));
+      }
+    }
+
     // This function searches the index of the output slot with the most similar angle
     int searchIdx(double angle) const;
 
@@ -260,6 +269,9 @@ public:
     //  - Also, make sure this list is sorted by the incident angle.
     //  ! You must use insertSide function to add a wall to this list.
     std::vector<WallG2> walls;
+
+    // The index into links of the first link in each section
+    std::vector<int> section_start;
 };
 
 #ifdef USE_OPEN_CV
@@ -356,6 +368,7 @@ private:
     void initDijkstra();
     void resetDijkstra();
     int Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, double angle, double lambda, bool cw);
+    int Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int end_idx, double wall_loss, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
     void backTrack(double lambda, int s, int t, Path &path);
 

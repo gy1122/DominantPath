@@ -143,6 +143,14 @@ int decr(CornerG2 *corner, int i) {
     return corner->edecr(i);
 }
 
+int wincr(CornerG2 *corner, int i) {
+    return corner->wincr(i);
+}
+
+int wdecr(CornerG2 *corner, int i) {
+    return corner->wdecr(i);
+}
+
 int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, double angle, double lambda, bool cw) {
 
     // This function implements the "radar" data structure.
@@ -154,12 +162,41 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
     // Compute in sec
     int insec = corner->links[dpoint.i].section;
 
+    // Wall Direction
+    int (*wdirec)(CornerG2 *, int) = cw? &wincr : &wdecr;
     // Direction
     int (*direc)(CornerG2 *, int) = cw? &incr : &decr;
-    int (*rdirec)(CornerG2 *, int) = cw? &decr : &incr;
 
-    // Terminating index
-    int term_idx = rdirec(corner, start_idx);
+    int section = corner->links[start_idx].section;
+    while (start_idx != dpoint.i) {
+        // Compute wall loss
+        //  I should better use loss table
+        double wall_loss = cornerLoss(corner, insec, section);
+        int term_idx = cw ? corner->section_start[wdirec(corner, section)]
+            : direc(corner,corner->section_start[section]);
+        // do we reach dpoint.i before term_idx?
+        if (corner->between(cw, start_idx, dpoint.i, term_idx)) {
+          term_idx = dpoint.i;
+        }
+        count += Dijkstra_sectionSwipe(Q, dpoint, start_idx, term_idx,
+                                       wall_loss, angle, lambda, cw);
+        start_idx = term_idx;
+        section = wdirec(corner, section);
+    }
+
+    return count;
+}
+
+// This function implements the corner swipe within one section between walls
+// processes [start_idx,term_idx) (circularly); if start_idx == term_idx,
+// this means the full set, not the empty set.
+int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int term_idx, double wall_loss, double angle, double lambda, bool cw) {
+    CornerG2 *corner = reinterpret_cast<CornerG2 *>(dpoint.p);
+
+    // Direction
+    int (*direc)(CornerG2 *, int) = cw? &incr : &decr;
+
+    int count = 0;
 
     // Start a clockwise / counterclockwise swiping
     for (int i = start_idx; i != term_idx; i = direc(corner,i)) {
@@ -168,11 +205,6 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
         if (getDijkstraLabel(epoint).visited) break;
 
         EdgeG2 *edge = &corner->links[i];
-
-        // Compute wall loss
-        //  I should better use loss table
-        int outsec = corner->links[i].section;
-        double wall_loss = cornerLoss(corner, insec, outsec);
 
         double dAngle = cw? anglediff(edge->angle, angle) : anglediff(angle, edge->angle);
         double loss = wall_loss + _flp->getAngleLoss() * dAngle;
