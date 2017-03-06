@@ -16,6 +16,7 @@
 #include <iostream>
 
 //#define SHOW_DEBUG
+#define SHOW_DEBUG2
 
 
 // -------------------------------------
@@ -229,7 +230,7 @@ int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint,
             double newval2 = newrad + parametricWeight(edge->loss, edge->dist, lambda);
 
             // check if this can be propagated one step forward
-            if (newval2 < getDijkstraVal(epoint2)) {
+            if (newval2 < _Dijkstra_dist_constraint && newval2 < getDijkstraVal(epoint2)) {
 
                 assert(!getDijkstraLabel(epoint2).visited);
 
@@ -254,7 +255,7 @@ void DominantPath::relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edg
     double val = getDijkstraVal(epoint);
     double newval = getDijkstraLabel(dpoint).val + parametricWeight(edge.loss, edge.dist, lambda);
 
-    if (newval < val) {
+    if (newval < _Dijkstra_dist_constraint && newval < val) {
         Q.decrease_key(epoint, newval);
         getDijkstraLabel(epoint).from = dpoint;
         getDijkstraLabel(epoint).d_e = edge.dist;
@@ -299,7 +300,7 @@ int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
             count += Dijkstra_cornerSwipe(Q, dpoint, point->eincr(start_idx), angle, lambda, true);
             count += Dijkstra_cornerSwipe(Q, dpoint, start_idx, angle, lambda, false);
 
-        } else {
+        } else if (point->i == s){
 
             for (int i=0; i < (int) point->links.size(); i++) {
                 EdgeG2 edge = point->links[i];
@@ -318,10 +319,82 @@ int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
 
 }
 
+int DominantPath::Dijkstra_all_dest(double lambda, Path* &paths) {
+    
+    const double pi = std::abs(std::atan2(0,-1));
+    
+    resetDijkstra();
+    
+    Priority_Queue Q;
+    int found_dest = 0;
+    
+    // We don't add all nodes into Q in the beginning but do that on the fly
+    // source is 0
+    DijkstraPoint source(_G2totPoints[0]);
+    getDijkstraLabel(source).val = 0.0;
+    Q.add(source);
+    
+    // This is the counter for the number of relaxations
+    int count = 0;
+    
+    while (Q.size() > 0) {
+        
+        // Extract one point from the priority queue
+        DijkstraPoint dpoint = Q.extract_min();
+        getDijkstraLabel(dpoint).visited = true;
+        
+        PointG2 *point = dpoint.p;
+        
+        // Check if we have all Dijkstra labels
+        if (!point->isCorner()) {
+            found_dest++;
+            if (found_dest == _nG2Points) break;
+        }
+        
+        if (point->isCorner()) {
+            
+            double angle = point->links[dpoint.i].angle;
+            if (angle > 0) angle -= pi;
+            else angle += pi;
+            
+            int start_idx = point->searchIdx(angle);
+            
+            count += Dijkstra_cornerSwipe(Q, dpoint, point->eincr(start_idx), angle, lambda, true);
+            count += Dijkstra_cornerSwipe(Q, dpoint, start_idx, angle, lambda, false);
+            
+        } else if (point->i == 0) {
+            
+            for (int i=0; i < (int) point->links.size(); i++) {
+                EdgeG2 edge = point->links[i];
+                relaxEdge(Q, dpoint, edge, lambda);
+                count++;
+            }
+            
+        }
+        
+    }
+    
+    // The following assertion might fail if we have distance constraint.
+    //assert(found_dest == _nG2Points);
+    
+    for (int i = 0; i < _nG2Points-1; i++) {
+        backTrack(lambda, 0, i+1, paths[i]);
+    }
+    
+    // Return the number of relaxations
+    return count;
+}
+
 void DominantPath::backTrack(double lambda, int s, int t, Path &path) {
 
     path.reset();
     DijkstraPoint ptr(_G2totPoints[t], 0);
+    
+    if (getDijkstraLabel(ptr).from.p == 0) { // not reachable
+        path.L = INFINITY;
+        path.D = INFINITY;
+        return;
+    }
 
     while (ptr.p->i != s) {
         DijkstraPoint prevPoint = getDijkstraLabel(ptr).from;
@@ -430,5 +503,93 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
     std::sort(paths, paths+npaths, mycmp_bp);
 
+    return count;
+}
+
+int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
+    int count = 0;
+    
+    Path *tmpPaths = new Path[_nG2Points-1];
+    double *vals = new double[_nG2Points-1];
+    double lambda = 0.0;
+    double D_min = INFINITY;
+    //double D_max = 0.0;
+    double bar_f = 0.0;
+    double min_lambda = 0.0;
+    
+    int numDijkstra = 0;
+    
+    for (int i = 0; i < _nG2Points - 1; i++) {
+        vals[i] = INFINITY;
+        paths[i].reset();
+    }
+    
+    // f = L + p ln D/D_min + p ln D_min
+
+    // Algorithm: apply Dijkstra on (  L + p e^{-i \eps/p} D/D_min )
+    
+    // Find D_min (the min dist)
+    count += Dijkstra_all_dest(INFINITY, tmpPaths);
+    for (int i = 0; i < _nG2Points - 1; i++) {
+        if (tmpPaths[i].D < D_min) D_min = tmpPaths[i].D;
+    }
+    
+    numDijkstra++;
+    
+    // Find the longest edge? or p exp(-bar_f/p) / D_min?
+    // I think instead of this longest edge, we can use bar_f to give a upper bound
+    /*
+    for (int i = 0; i < _nG2totPoints; i++) {
+        for (int j = 0; j < _G2totPoints[i]->links.size(); j++) {
+            if (_G2totPoints[i]->links[j].dist > D_max) D_max = _G2totPoints[i]->links[j].dist;
+        }
+    }
+    D_max = D_max * _nG2totPoints;
+    */
+    
+    // bar_f: the upper bound on the objective given by arbitrary path.  Choose the largest one among all measurement points
+    for (int i = 0; i < _nG2Points - 1; i++) {
+        double tmpVal = tmpPaths[i].L + p * std::log(tmpPaths[i].D / D_min);
+        if ( tmpVal > bar_f ) bar_f = tmpVal;
+    }
+    
+    min_lambda = p * exp(-bar_f/p) / D_min;
+    
+    //printf("D_max: %f  bar_f: %f\n", D_max, D_min/exp(-bar_f/p));
+    //assert(D_min/exp(-bar_f/p) <= D_max);
+    
+    
+    //
+    lambda = p / D_min;
+    
+    while (lambda >= min_lambda) {
+#ifdef SHOW_DEBUG2
+        printf("lambda=%f\n", lambda);
+#endif
+        
+        _Dijkstra_dist_constraint = p / lambda;
+        
+        count += Dijkstra_all_dest(lambda, tmpPaths);
+        for (int i = 0; i < _nG2Points - 1; i++) {
+            double obj = tmpPaths[i].L + p * std::log(tmpPaths[i].D);
+            if (obj < vals[i]) { // Keep the better path
+                vals[i] = obj;
+                paths[i] = tmpPaths[i];
+            }
+        }
+        
+        lambda = lambda * step;
+        numDijkstra++;
+    }
+    
+    _Dijkstra_dist_constraint = INFINITY;
+    
+#ifdef SHOW_DEBUG2
+    printf("number of Dijkstra=%d\n", numDijkstra);
+#endif
+    
+    delete[] vals;
+    delete[] tmpPaths;
+    
     return count;
 }

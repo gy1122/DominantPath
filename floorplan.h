@@ -316,6 +316,17 @@ public:
     //   - number of relaxations
     // ---------------------------------------------
     int Dijkstra(double lambda, int s, int t, Path &path);
+    
+    // This function performs Dijkstra algorithm to find the shortest path from 0 to all dests
+    // ---------------------------------------------
+    // Inputs:
+    //   - lambda: parameter for mixing two weights.  The weight will be L + labmda*D
+    //   - paths: reference to the array for storing the returned path
+    // ---------------------------------------------
+    // Output:
+    //   - number of relaxations
+    // ---------------------------------------------
+    int Dijkstra_all_dest(double lambda, Path* &paths);
 
     // This function finds all breakpoints for s-t paths
     // ---------------------------------------------
@@ -328,6 +339,8 @@ public:
     // Output:
     //   - number of Dijkstra relaxations
     int BreakPoints(int s, int t, int limit, Path *paths, int &npaths);
+    
+    int Approx_all_dest(double p, double step, Path* &paths);
 
 #ifdef USE_OPEN_CV
 
@@ -345,10 +358,13 @@ public:
     //   - paths: the list for the paths to be printed
     // ---------------------------------------------
     void printPaths(int npaths, Path* paths);
+    
+    // This function finds the heatmap
+    void heatmap(double p, double step, int sx, int sy, int x, int y, int precision);
 
 private:
 
-    void makeFloorplanImage(cv::Mat &image);
+    void makeFloorplanImage(cv::Mat &image, bool text = true);
 
 #endif
 
@@ -371,6 +387,8 @@ private:
     int Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int end_idx, double wall_loss, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
     void backTrack(double lambda, int s, int t, Path &path);
+    
+    double _Dijkstra_dist_constraint;
 
     // Helper functions:
     int findSection(const PointG2 *corner1, const CornerG2 *corner2, const EdgeG2 &inedge) const;

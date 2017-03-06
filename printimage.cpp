@@ -10,19 +10,22 @@
 
 #ifdef USE_OPEN_CV
 
+#include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #define SHOW_DEBUG
 
-void DominantPath::makeFloorplanImage(cv::Mat &image) {
+void DominantPath::makeFloorplanImage(cv::Mat &image, bool text) {
 
     for (int i=0; i < _nG2totPoints; i++) {
         PointG2 *point = _G2totPoints[i];
         cv::Point center(point->x() * fScale +fShift, point->y() * fScale + fShift);
         cv::circle(image, center, 3, cv::Scalar(0,0,0));
 
-        cv::Point font_center(center.x + 2.5, center.y + 12.5);
-        cv::putText(image, std::to_string(i), font_center, cv::FONT_HERSHEY_SCRIPT_SIMPLEX, 0.4, cv::Scalar(0,0,255));
+        if (text) {
+            cv::Point font_center(center.x + 2.5, center.y + 12.5);
+            cv::putText(image, std::to_string(i), font_center, cv::FONT_HERSHEY_SCRIPT_SIMPLEX, 0.4, cv::Scalar(0,0,255));
+        }
     }
 
     for (int i=0; i < _flp->getNumWalls(); i++) {

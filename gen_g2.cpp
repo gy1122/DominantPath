@@ -93,7 +93,7 @@ void DominantPath::initG2() {
 
 
     // Create nodes for G2
-
+    // index 0 is always the source
     int idx = 0;
     for (int i=0; i < _nG2Points; i++) {
         _G2Points[i].ref = &_mPoints[i];
@@ -107,6 +107,8 @@ void DominantPath::initG2() {
         _G2totPoints[idx]->i = idx;
         idx++;
     }
+    
+    _Dijkstra_dist_constraint = INFINITY;
 }
 
 void DominantPath::linkWalls() {
@@ -196,7 +198,8 @@ void DominantPath::createLinksForCorner(CornerG2 *corner) {
     }
 
     // Create links to other corners and measurement points
-    for (int j=0; j < _nG2totPoints; j++) {
+    // index starts from 1, because we don't create link toward the source
+    for (int j=1; j < _nG2totPoints; j++) {
         if (j <= corner->i) continue;
 
         PointG2 *p2 = _G2totPoints[j];
@@ -244,6 +247,8 @@ void DominantPath::createLinksForCorner(CornerG2 *corner) {
 }
 
 void DominantPath::createLinksForPoint(PointG2 *point) {
+    
+    // we only create source to wall, source to measurement point, but not measurement to measurement
 
     int numLinks = _nG2totPoints - 1;
 
@@ -260,9 +265,11 @@ void DominantPath::createLinksForPoint(PointG2 *point) {
         tmpList[tmpIdx++] = point->links[j];
     }
 
-    // Create links to other corners and measurement points
-    for (int j=0; j < _nG2totPoints; j++) {
+    // Create links to other corners but not measurement points
+    // Index starts from 1 because we do not need link towards the source
+    for (int j=1; j < _nG2totPoints; j++) {
         if (j <= point->i) continue;
+        if (point->i > 0 && (!_G2totPoints[j]->isCorner())) continue;
 
         PointG2 *p2 = _G2totPoints[j];
         EdgeG2 edge;
