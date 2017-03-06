@@ -56,6 +56,19 @@ public:
     void genRandomFloorplan(int x, int y, double wallloss, double angleloss,
                             double exterior_wallloss, unsigned seed = 0);
 
+    void genOffice1(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice2(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice3(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice4(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+
     inline int getNumCorners() const { return _nCorners; }
     inline Corner *getCornerPtr(int i) const { return &_corners[i]; }
     inline int getNumWalls() const { return _nWalls; }
@@ -64,6 +77,9 @@ public:
 
     int save(const char *filename) const;
     int load(const char *filename);
+
+    double getWidth() const;
+    double getHeight() const;
 
 private:
 
@@ -347,7 +363,7 @@ public:
     // ---------------------------------------------
     void printPaths(int npaths, Path *paths, double logd_scale);
 
-   private:
+private:
 
     void makeFloorplanImage(cv::Mat &image);
 
@@ -400,10 +416,10 @@ private:
     PointG2     **_G2totPoints;
 
 public:
-    double      fScale;
-    double      fShift;
     double      fSizeX;
     double      fSizeY;
+    double      fShift;
+    double      fScale;
 };
 
 #endif /* defined(__DominantPath__floorplan__) */

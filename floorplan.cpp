@@ -147,7 +147,6 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
             if (vedges[i*x+j]) {
                 _walls[curptr].c1 = &_corners[i*(x+1)+j+1];
                 _walls[curptr].c2 = &_corners[(i+1)*(x+1)+j+1];
-                _walls[curptr].loss = wallloss;
                 if (j == x-1) {
                     _walls[curptr].loss = exterior_wallloss;
                 } else {
@@ -177,6 +176,450 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
     delete [] hedges;
     delete [] wvedges;
     delete [] whedges;
+}
+
+void Floorplan::genOffice1(int nx, int ny, double wx, double wy, double hall,
+                           double wallloss, double angleloss,
+                           double exterior_wallloss) {
+    _nCorners = (2*nx+2)*(3*ny+1);
+    _nWalls = (2*nx)*(3*ny+1) + (2*nx+2)*(2*ny) + 2*ny + 2;
+
+    _corners = new Corner[_nCorners];
+    _walls = new Wall[_nWalls];
+    _angleLoss = angleloss;
+
+    int p = 0;
+    int w = 0;
+    for (int j=0; j<3*ny+1; ++j) {
+        for (int i=0; i<2*nx+2; ++i) {
+            _corners[p].i = p;
+            _corners[p].x = i * wx + ((i > nx) ? (hall - wx) : 0.0);
+            _corners[p].y = j * wy + ((j+1)/3) * (hall - wy);
+            if (i > 0 && !(i == nx+1 && j != 0 && j != 3*ny)) {
+                _walls[w].c1 = &_corners[p-1];
+                _walls[w].c2 = &_corners[p];
+                if (j == 0 || j == 3*ny) {
+                    _walls[w].loss = exterior_wallloss;
+                } else {
+                    _walls[w].loss = wallloss;
+                }
+                ++w;
+            }
+            if (j > 0 && !(j % 3 == 2 && i != 0 && i != 2*nx+1)) {
+                _walls[w].c1 = &_corners[p-(2*nx+2)];
+                _walls[w].c2 = &_corners[p];
+                if (i == 0 || i == 2*ny+1) {
+                    _walls[w].loss = exterior_wallloss;
+                } else {
+                    _walls[w].loss = wallloss;
+                }
+                ++w;
+            }
+            ++p;
+        }
+    }
+    assert(w == _nWalls);
+    assert(p == _nCorners);
+}
+
+void Floorplan::genOffice2(int nx, int ny, double wx, double wy, double hall,
+                           double wallloss, double angleloss,
+                           double exterior_wallloss) {
+    _nCorners = 4 + (3*nx)*(ny+1);
+    _nWalls = 4 + (2*nx)*(ny+1) + (3*nx)*ny;
+
+    _corners = new Corner[_nCorners];
+    _walls = new Wall[_nWalls];
+    _angleLoss = angleloss;
+
+    int p = 0;
+    int w = 0;
+    // 4 exterior corners and walls
+    for (int j=0; j<2; j++) {
+        for (int i=0; i<2; i++) {
+            _corners[p].i = p;
+            _corners[p].x = i * (2*nx*wx + (nx+1) * hall);
+            _corners[p].y = j * (ny*wy + 2*hall);
+            ++p;
+        }
+    }
+    for (int i=0; i<2; i++) {
+        _walls[w].c1 = &_corners[i];
+        _walls[w].c2 = &_corners[i+2];
+        _walls[w].loss = exterior_wallloss;
+        ++w;
+        _walls[w].c1 = &_corners[2*i];
+        _walls[w].c2 = &_corners[2*i+1];
+        _walls[w].loss = exterior_wallloss;
+        ++w;
+    }
+    // interior walls
+    for (int j=0; j<ny+1; ++j) {
+        for (int i=0; i<3*nx; ++i) {
+            _corners[p].i = p;
+            _corners[p].x = hall + i * wx + (i/3) * (hall - wx);
+            _corners[p].y = hall + j * wy;
+            if (i % 3 != 0) {
+                _walls[w].c1 = &_corners[p-1];
+                _walls[w].c2 = &_corners[p];
+                _walls[w].loss = wallloss;
+                ++w;
+            }
+            if (j > 0) {
+                _walls[w].c1 = &_corners[p-(3*nx)];
+                _walls[w].c2 = &_corners[p];
+                _walls[w].loss = wallloss;
+                ++w;
+            }
+            ++p;
+        }
+    }
+    assert(w == _nWalls);
+    assert(p == _nCorners);
+}
+
+void Floorplan::genOffice3(int nx, int ny, double wx, double wy, double hall,
+                           double wallloss, double angleloss,
+                           double exterior_wallloss) {
+    if (wx < wy) std::swap(wx,wy);
+
+    int inx = (int)((nx*wy - 2*hall - 2*wx)/wy);
+    double idelx = (nx*wy - hall - 2*wx - inx * wy)/2;
+    int iny = (int)((ny*wy - 2*hall - 2*wx)/wy);
+    double idely = (ny*wy - hall - 2*wx - iny * wy)/2;
+
+    double totx = nx*wy + 2*wx + hall;
+    double toty = ny*wy + 2*wx + hall;
+
+    _nCorners = 2*(2*nx+4) + 2*(2*ny+4) + 2*(2*inx+4) + 2*(2*iny+4) - 2;
+    _nWalls = 2*(3*nx+5) + 2*(3*ny+5) + 2*(3*inx+5) + 2*(3*iny+5) - 4;
+
+    _corners = new Corner[_nCorners];
+    _walls = new Wall[_nWalls];
+    _angleLoss = angleloss;
+
+    int p = 0;
+    int w = 0;
+    // clumsy, but just do each side at a time.
+    // the outer top
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, 0.0, wx + hall/2}; ++p;
+    _corners[p] = {p, wx, wx + hall/2}; ++p;
+    _corners[p] = {p, 0.0, 0.0}; ++p;
+    _corners[p] = {p, wx, wx}; ++p;
+    for (int i=0; i<nx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, wx + hall/2 + i*wy, 0.0}; ++p;
+        _corners[p] = {p, wx + hall/2 + i*wy, wx}; ++p;
+    }
+
+    // the outer right side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, totx - wx - hall/2, 0.0}; ++p;
+    _corners[p] = {p, totx - wx - hall/2, wx}; ++p;
+    _corners[p] = {p, totx, 0.0}; ++p;
+    _corners[p] = {p, totx - wx, wx}; ++p;
+    for (int i=0; i<ny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, totx, wx + hall/2 + i*wy}; ++p;
+        _corners[p] = {p, totx - wx, wx + hall/2 + i*wy}; ++p;
+    }
+
+    // the outer bottom
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, totx, toty - wx - hall/2}; ++p;
+    _corners[p] = {p, totx - wx, toty - wx - hall/2}; ++p;
+    _corners[p] = {p, totx, toty}; ++p;
+    _corners[p] = {p, totx - wx, toty - wx}; ++p;
+    for (int i=0; i<nx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, totx - wx - hall/2 - i*wy, toty}; ++p;
+        _corners[p] = {p, totx - wx - hall/2 - i*wy, toty - wx}; ++p;
+    }
+
+    // the outer left side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, wx + hall/2, toty}; ++p;
+    _corners[p] = {p, wx + hall/2, toty - wx}; ++p;
+    _corners[p] = {p, 0.0, toty}; ++p;
+    _corners[p] = {p, wx, toty - wx}; ++p;
+    for (int i=0; i<ny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, 0.0, toty - wx - hall/2 - i*wy}; ++p;
+        _corners[p] = {p, wx, toty - wx - hall/2 - i*wy}; ++p;
+    }
+    // fix final wall connections!
+    _walls[w-2].c2 = &_corners[0];
+    _walls[w-1].c2 = &_corners[1];
+
+    int inner_p0 = p;
+    double ibase = wx + hall;
+    double itotx = ibase + inx*wy + 2*wx + 2*idelx;
+    double itoty = ibase + iny*wy + 2*wx + 2*idely;
+    // the inner top
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _corners[p] = {p, ibase, ibase + wx + idely}; ++p;
+    _corners[p] = {p, ibase + wx, ibase + wx + idely}; ++p;
+    for (int i=0; i<inx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, ibase + wx + idelx + i*wy, ibase}; ++p;
+        _corners[p] = {p, ibase + wx + idelx + i*wy, ibase + wx}; ++p;
+    }
+
+    // the inner right side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], exterior_wallloss}; ++w;
+    _corners[p] = {p, itotx - wx - idelx, ibase}; ++p;
+    _corners[p] = {p, itotx - wx - idelx, ibase + wx}; ++p;
+    _corners[p] = {p, itotx, ibase}; ++p;
+    _corners[p] = {p, itotx - wx, ibase + wx}; ++p;
+    for (int i=0; i<iny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, itotx, ibase + wx + idely + i*wy}; ++p;
+        _corners[p] = {p, itotx - wx, ibase + wx + idely + i*wy}; ++p;
+    }
+
+    // the inner bottom
+    _walls[w] = {&_corners[p+0], &_corners[p+2], wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], exterior_wallloss}; ++w;
+    _corners[p] = {p, itotx, itoty - wx - idely}; ++p;
+    _corners[p] = {p, itotx - wx, itoty - wx - idely}; ++p;
+    _corners[p] = {p, itotx, itoty}; ++p;
+    _corners[p] = {p, itotx - wx, itoty - wx}; ++p;
+    for (int i=0; i<inx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, itotx - wx - idelx - i*wy, itoty}; ++p;
+        _corners[p] = {p, itotx - wx - idelx - i*wy, itoty - wx}; ++p;
+    }
+
+    // the inner left side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], exterior_wallloss}; ++w;
+    _corners[p] = {p, ibase + wx + idelx, itoty}; ++p;
+    _corners[p] = {p, ibase + wx + idelx, itoty - wx}; ++p;
+    _corners[p] = {p, ibase, itoty}; ++p;
+    _corners[p] = {p, ibase + wx, itoty - wx}; ++p;
+    for (int i=0; i<iny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, ibase, itoty - wx - idely - i*wy}; ++p;
+        _corners[p] = {p, ibase + wx, itoty - wx - idely - i*wy}; ++p;
+    }
+    // fix final wall connections!
+    _walls[w-2].c2 = &_corners[inner_p0];
+    _walls[w-1].c2 = &_corners[inner_p0+1];
+
+    assert(w == _nWalls);
+    assert(p == _nCorners);
+}
+
+void Floorplan::genOffice4(int nx, int ny, double wx, double wy, double hall,
+                           double wallloss, double angleloss,
+                           double exterior_wallloss) {
+    if (wx < wy) std::swap(wx,wy);
+
+    int inx = (int)((nx*wy - 2*hall - 2*wx)/wy);
+    double idelx = (nx*wy - hall - 2*wx - inx * wy)/2;
+    int iny = (int)((ny*wy - 2*hall - 2*wx)/wy);
+    double idely = (ny*wy - hall - 2*wx - iny * wy)/2;
+
+    double totx = nx*wy + 2*wx + hall;
+    double toty = ny*wy + 2*wx + hall;
+
+    _nCorners = 2*(2*nx+4) + 2*(2*ny+4) + 2*(2*inx+4) + 2*(2*iny+4) - 4;
+    _nWalls = 2*(3*nx+5) + 2*(3*ny+5) + 2*(3*inx+5) + 2*(3*iny+5) - 8;
+
+    _corners = new Corner[_nCorners];
+    _walls = new Wall[_nWalls];
+    _angleLoss = angleloss;
+
+    int p = 0;
+    int w = 0;
+    // clumsy, but just do each side at a time.
+    // the outer top
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, 0.0, wx + hall/2}; ++p;
+    _corners[p] = {p, wx, wx + hall/2}; ++p;
+    _corners[p] = {p, 0.0, 0.0}; ++p;
+    _corners[p] = {p, wx, wx}; ++p;
+    for (int i=0; i<nx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, wx + hall/2 + i*wy, 0.0}; ++p;
+        _corners[p] = {p, wx + hall/2 + i*wy, wx}; ++p;
+    }
+
+    // the outer right side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, totx - wx - hall/2, 0.0}; ++p;
+    _corners[p] = {p, totx - wx - hall/2, wx}; ++p;
+    _corners[p] = {p, totx, 0.0}; ++p;
+    _corners[p] = {p, totx - wx, wx}; ++p;
+    for (int i=0; i<ny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, totx, wx + hall/2 + i*wy}; ++p;
+        _corners[p] = {p, totx - wx, wx + hall/2 + i*wy}; ++p;
+    }
+
+    // the outer bottom
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, totx, toty - wx - hall/2}; ++p;
+    _corners[p] = {p, totx - wx, toty - wx - hall/2}; ++p;
+    _corners[p] = {p, totx, toty}; ++p;
+    _corners[p] = {p, totx - wx, toty - wx}; ++p;
+    for (int i=0; i<nx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, totx - wx - hall/2 - i*wy, toty}; ++p;
+        _corners[p] = {p, totx - wx - hall/2 - i*wy, toty - wx}; ++p;
+    }
+
+    // the outer left side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], wallloss}; ++w;
+    _corners[p] = {p, wx + hall/2, toty}; ++p;
+    _corners[p] = {p, wx + hall/2, toty - wx}; ++p;
+    _corners[p] = {p, 0.0, toty}; ++p;
+    _corners[p] = {p, wx, toty - wx}; ++p;
+    for (int i=0; i<ny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], exterior_wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], wallloss}; ++w;
+        _corners[p] = {p, 0.0, toty - wx - hall/2 - i*wy}; ++p;
+        _corners[p] = {p, wx, toty - wx - hall/2 - i*wy}; ++p;
+    }
+    // fix final wall connections!
+    _walls[w-2].c2 = &_corners[0];
+    _walls[w-1].c2 = &_corners[1];
+
+    int inner_p0 = p;
+    double ibase = wx + hall;
+    double itotx = ibase + inx*wy + 2*wx + 2*idelx;
+    double itoty = ibase + iny*wy + 2*wx + 2*idely;
+    // the inner top
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _corners[p] = {p, ibase, ibase + wx + idely}; ++p;
+    _corners[p] = {p, ibase + wx, ibase + wx + idely}; ++p;
+    for (int i=0; i<inx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, ibase + wx + idelx + i*wy, ibase}; ++p;
+        _corners[p] = {p, ibase + wx + idelx + i*wy, ibase + wx}; ++p;
+    }
+
+    // the inner right side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], exterior_wallloss}; ++w;
+    _corners[p] = {p, itotx - wx - idelx, ibase}; ++p;
+    _corners[p] = {p, itotx - wx - idelx, ibase + wx}; ++p;
+    _corners[p] = {p, itotx, ibase}; ++p;
+    _corners[p] = {p, itotx - wx, ibase + wx}; ++p;
+    for (int i=0; i<iny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, itotx, ibase + wx + idely + i*wy}; ++p;
+        _corners[p] = {p, itotx - wx, ibase + wx + idely + i*wy}; ++p;
+    }
+
+    // the inner bottom
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _corners[p] = {p, itotx, itoty - wx - idely}; ++p;
+    _corners[p] = {p, itotx - wx, itoty - wx - idely}; ++p;
+    for (int i=0; i<inx; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, itotx - wx - idelx - i*wy, itoty}; ++p;
+        _corners[p] = {p, itotx - wx - idelx - i*wy, itoty - wx}; ++p;
+    }
+
+    // the inner left side
+    _walls[w] = {&_corners[p+0], &_corners[p+2], wallloss}; ++w;
+    _walls[w] = {&_corners[p+2], &_corners[p+4], wallloss}; ++w;
+    _walls[w] = {&_corners[p+0], &_corners[p+1], wallloss}; ++w;
+    _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+    _walls[w] = {&_corners[p+3], &_corners[p+5], exterior_wallloss}; ++w;
+    _corners[p] = {p, ibase + wx + idelx, itoty}; ++p;
+    _corners[p] = {p, ibase + wx + idelx, itoty - wx}; ++p;
+    _corners[p] = {p, ibase, itoty}; ++p;
+    _corners[p] = {p, ibase + wx, itoty - wx}; ++p;
+    for (int i=0; i<iny; ++i) {
+        _walls[w] = {&_corners[p], &_corners[p+1], wallloss}; ++w;
+        _walls[w] = {&_corners[p], &_corners[p+2], wallloss}; ++w;
+        _walls[w] = {&_corners[p+1], &_corners[p+3], exterior_wallloss}; ++w;
+        _corners[p] = {p, ibase, itoty - wx - idely - i*wy}; ++p;
+        _corners[p] = {p, ibase + wx, itoty - wx - idely - i*wy}; ++p;
+    }
+    // fix final wall connections!
+    _walls[w-2].c2 = &_corners[inner_p0];
+    _walls[w-1].c2 = &_corners[inner_p0+1];
+
+    assert(w == _nWalls);
+    assert(p == _nCorners);
 }
 
 int Floorplan::save(const char *filename) const {
@@ -235,4 +678,20 @@ int Floorplan::load(const char *filename) {
     assert(wptr == _nWalls);
 
     return 0;
+}
+
+double Floorplan::getWidth() const {
+    double width = 0;
+    for (int i=0; i<_nCorners; ++i) {
+        if (_corners[i].x > width) width = _corners[i].x;
+    }
+    return width;
+}
+
+double Floorplan::getHeight() const {
+    double height = 0;
+    for (int i=0; i<_nCorners; ++i) {
+        if (_corners[i].y > height) height = _corners[i].y;
+    }
+    return height;
 }
