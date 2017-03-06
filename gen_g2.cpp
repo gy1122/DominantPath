@@ -334,6 +334,16 @@ void DominantPath::mergeLinks(PointG2 *point, int nEdges, EdgeG2 *tmpList) {
         }
 
         //
+        // Skip links to measurement points, i.e. keep all of them
+        if (!tmpList[j].target->isCorner()) {
+            tmpListKeep[j] = true;
+            j = k;
+            continue;
+        } else if (!tmpList[k].target->isCorner()) {
+            tmpListKeep[k] = true;
+            continue;
+        }
+            
         if (std::abs(tmpList[j].angle - tmpList[k].angle) > TINY) {
 
             // If two lines have different angle, keep j.
@@ -343,7 +353,7 @@ void DominantPath::mergeLinks(PointG2 *point, int nEdges, EdgeG2 *tmpList) {
             j=k;
 
         } else {
-
+            
             // If two lines have the same angle
             // Intuitively, we should keep the line with smaller dist
             // However, in any way we should keep the lines along a wall
@@ -515,7 +525,7 @@ double DominantPath::getLoss(const PointG2 *p, const EdgeG2 &edge) const {
         if (std::abs(z) > TINY) {
             double r = ((y-v)*dx + (u-x)*dy)/z;
             double t = ((u-x)*dv + (y-v)*du)/z;
-            if (r>0.0 && r<1.0 && t>0.0 && t<1.0) {
+            if (r>=0.0 && r<=1.0 && t>=0.0 && t<=1.0) {
                 loss += wall->loss;
             }
         }
