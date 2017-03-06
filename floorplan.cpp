@@ -22,7 +22,7 @@ Floorplan::~Floorplan() {
     if (_walls)     delete [] _walls;
 }
 
-void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed) {
+void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double angleloss, double exterior_wallloss, unsigned seed) {
 
     // -- Form a random spanning tree
     int n_visited = 0;
@@ -131,32 +131,43 @@ void Floorplan::genRandomFloorplan(int x, int y, double wallloss, double anglelo
     for (int i=0; i < x; i++) {
         _walls[curptr].c1 = &_corners[i];
         _walls[curptr].c2 = &_corners[i+1];
-        _walls[curptr].loss = wallloss;
+        _walls[curptr].loss = exterior_wallloss;
         curptr++;
     }
 
     for (int i=0; i < y; i++) {
         _walls[curptr].c1 = &_corners[i*(x+1)];
         _walls[curptr].c2 = &_corners[(i+1)*(x+1)];
-        _walls[curptr].loss = wallloss;
+        _walls[curptr].loss = exterior_wallloss;
         curptr++;
     }
 
-    for (int i=0; i < y; i++)
+    for (int i=0; i < y; i++) {
         for (int j=0; j < x; j++) {
             if (vedges[i*x+j]) {
                 _walls[curptr].c1 = &_corners[i*(x+1)+j+1];
                 _walls[curptr].c2 = &_corners[(i+1)*(x+1)+j+1];
                 _walls[curptr].loss = wallloss;
+                if (j == x-1) {
+                    _walls[curptr].loss = exterior_wallloss;
+                } else {
+                    _walls[curptr].loss = wallloss;
+                }
                 curptr++;
             }
             if (hedges[i*x+j]) {
                 _walls[curptr].c1 = &_corners[(i+1)*(x+1)+j];
                 _walls[curptr].c2 = &_corners[(i+1)*(x+1)+j+1];
                 _walls[curptr].loss = wallloss;
+                if (i == y-1) {
+                    _walls[curptr].loss = exterior_wallloss;
+                } else {
+                    _walls[curptr].loss = wallloss;
+                }
                 curptr++;
             }
         }
+    }
 
     _angleLoss = angleloss;
 
@@ -225,4 +236,3 @@ int Floorplan::load(const char *filename) {
 
     return 0;
 }
-

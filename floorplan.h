@@ -53,7 +53,8 @@ public:
     Floorplan();
     ~Floorplan();
 
-    void genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed = 0);
+    void genRandomFloorplan(int x, int y, double wallloss, double angleloss,
+                            double exterior_wallloss, unsigned seed = 0);
 
     inline int getNumCorners() const { return _nCorners; }
     inline Corner *getCornerPtr(int i) const { return &_corners[i]; }
@@ -344,9 +345,9 @@ public:
     //   - npaths: number of paths to be printed
     //   - paths: the list for the paths to be printed
     // ---------------------------------------------
-    void printPaths(int npaths, Path* paths);
+    void printPaths(int npaths, Path *paths, double logd_scale);
 
-private:
+   private:
 
     void makeFloorplanImage(cv::Mat &image);
 
@@ -394,7 +395,7 @@ private:
     PointG2     *_G2Points;
     CornerG2    *_G2Corners;
 
-    // Also create a combined list for references.  
+    // Also create a combined list for references.
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
 
