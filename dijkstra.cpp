@@ -449,6 +449,13 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
     count += Dijkstra(0, s, t, paths[npaths++]); // L
     count += Dijkstra(INFINITY, s, t, paths[npaths++]);  // D
+    
+    // If only one path found, then return the only path
+    if (paths[0].D == paths[1].D && paths[0].L == paths[1].L) {
+        npaths--;
+        return count;
+    }
+    
     queue.push(spair(0,1));
 
     while (!queue.empty()) {

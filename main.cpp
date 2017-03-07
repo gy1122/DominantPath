@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "floorplan.h"
+#include "experiments.h"
 
 double cpu_timer() {
     struct rusage usage;
@@ -175,6 +176,11 @@ int main(int argc, const char * argv[]) {
         dmp.heatmap(p, step, pts[0].x, pts[0].y,
                     flp.getWidth(), flp.getHeight(),
                     grid_measurements);
+    } else if (mode == 4) { // for testing
+        Random_st_pairs rsp(&flp, p);
+        rsp.size_x = flp.getWidth();
+        rsp.size_y = flp.getHeight();
+        rsp.test(100);
     }
     
     delete [] paths;

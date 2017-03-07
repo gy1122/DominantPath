@@ -18,8 +18,8 @@ public:
     
     void test(int nTests, unsigned seed = 123);
     
-    int         size_x;
-    int         size_y;
+    double         size_x;
+    double         size_y;
     
 private:
     Floorplan   *_flp;

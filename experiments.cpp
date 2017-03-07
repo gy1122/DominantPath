@@ -33,7 +33,7 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
         pts[1].x = distribution(generator) * size_x;
         pts[1].y = distribution(generator) * size_y;
         
-        printf("Test (%f,%f) to (%f,%f)", pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+        printf("Test %d (%f,%f) to (%f,%f) ", i, pts[0].x, pts[0].y, pts[1].x, pts[1].y);
         
         // Find cvx hull for this s-t pair
         DominantPath dmp(_flp, 2, pts);
@@ -55,6 +55,8 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
             }
         }
         
+        printf("minloss=%f  ", min_loss);
+        
         // Find the corresponding critical lambdas that switch from j-1 to j-th path
         double lambdas[ARR_LIMIT];
         lambdas[0] = 0.0; // min L
@@ -67,6 +69,12 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
 
                 lambdas[j] = dL / dD;
             }
+        
+        for (int j = 0; j < npaths; j++) {
+            //printf("%f ", lambdas[j]);
+            printf("(%f,%f)", paths[j].L, paths[j].D);
+        }
+        printf("\n");
         
         // Now R should be lambdas[min_loss_id+1]/lambdas[min_loss_id]
     }
