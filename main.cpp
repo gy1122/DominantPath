@@ -59,7 +59,7 @@ int main(int argc, const char * argv[]) {
     // mode 3 == heatmap
     int mode = 0;
 
-    double p = 20.0/log(10.0);
+    double p = 20.0/std::log(10.0);
 
     // This program finds the paths from pts[0] to pts[1]
     Point pts[3];
