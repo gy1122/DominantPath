@@ -116,12 +116,11 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 #endif
 
 
+    cv::Mat image1(fSizeX, fSizeY, CV_8UC1, cv::Scalar(255));
     cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
 
 
     // Draw results
-    cv::Point center(pts[0].x * fScale +fShift, pts[0].y * fScale + fShift);
-    cv::circle(image, center, 4, cv::Scalar(255,0,0), 2);
 
     for (int i=1; i < totx*toty; i++) {
         double loss = paths[i-1].L + p * std::log(paths[i-1].D);
@@ -134,8 +133,14 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
         cv::Point p2((pts[i].x+0.51/precision) * fScale +fShift, (pts[i].y+0.51/precision) * fScale + fShift);
         cv::Rect2d rect(p1, p2);
         //cv::circle(image, center, 3, cv::Scalar(0,0,int((loss/max_loss)*256)));
-        cv::rectangle(image, rect, cv::Scalar(0,0,int((1.1-loss/max_loss)*256)), -1);
+        //cv::rectangle(image1, rect, cv::Scalar(int((1.0-loss/max_loss)*256)), -1);
+        cv::rectangle(image1, rect, cv::Scalar(int((1.0-loss/max_loss)*256)), -1);
     }
+    
+    cv::applyColorMap(image1, image, cv::COLORMAP_JET);
+    
+    cv::Point center(pts[0].x * fScale +fShift, pts[0].y * fScale + fShift);
+    cv::circle(image, center, 4, cv::Scalar(255,0,0), 2);
 
     // Draw floorplan
     for (int i=0; i < _nG2Corners; i++) {
