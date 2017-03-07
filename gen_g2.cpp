@@ -491,6 +491,26 @@ void DominantPath::createLinks(PointG2 *point) {
 
 }
 
+int DominantPath::numG2Points() const {
+    return _nG2totPoints;
+}
+
+int DominantPath::numG2Corners() const {
+    return _nG2Corners;
+}
+
+int DominantPath::numG2MeasurementPoints() const {
+    return _nG2Points;
+}
+
+int DominantPath::numG2Links() const {
+    int total = 0;
+    for (int i=0; i<_nG2totPoints; ++i) {
+        total += _G2totPoints[i]->links.size();
+    }
+    return total;
+}
+
 void DominantPath::generateG2() {
 
     initG2();
