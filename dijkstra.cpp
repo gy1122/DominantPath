@@ -543,7 +543,19 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     // Algorithm: apply Dijkstra on (  L + p e^{-i \eps/p} D/D_min )
     
     // Find D_min (the min dist)
-    count += Dijkstra_all_dest(INFINITY, tmpPaths);
+#ifdef SHOW_DEBUG2
+    double dijkstra_start = util::cpu_timer();
+    printf("lambda=INFINITY");
+    fflush (stdout);
+#endif
+    int incr_count = Dijkstra_all_dest(INFINITY, tmpPaths);
+    count += incr_count;
+#ifdef SHOW_DEBUG2
+    printf(" %d relaxations in %.3f seconds\n", incr_count,
+           (util::cpu_timer() - dijkstra_start));
+    fflush (stdout);
+#endif
+
     for (int i = 0; i < _nG2Points - 1; i++) {
         if (tmpPaths[i].D < D_min) D_min = tmpPaths[i].D;
         
@@ -555,7 +567,18 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     numDijkstra++;
     
     // Find D_max
-    count += Dijkstra_all_dest(0, tmpPaths);
+#ifdef SHOW_DEBUG2
+    dijkstra_start = util::cpu_timer();
+    printf("lambda=0");
+    fflush (stdout);
+#endif
+    incr_count = Dijkstra_all_dest(0, tmpPaths);
+    count += incr_count;
+#ifdef SHOW_DEBUG2
+        printf(" %d relaxations in %.3f seconds\n", incr_count,
+               (util::cpu_timer() - dijkstra_start));
+        fflush (stdout);
+#endif
     for (int i = 0; i < _nG2Points - 1; i++) {
         if (tmpPaths[i].D > D_max) D_max = tmpPaths[i].D;
         
@@ -578,7 +601,7 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     //min_lambda = p * exp(-bar_f/p) / D_min;
     min_lambda = p / D_max;
     
-    printf("D_max: %f\n", D_max);
+    printf("D_min: %f  D_max: %f\n", D_min, D_max);
     //assert(D_min/exp(-bar_f/p) <= D_max);
     
     
@@ -590,14 +613,14 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         lambda = lambda * step;
         
 #ifdef SHOW_DEBUG2
-        double dijkstra_start = util::cpu_timer();
+        dijkstra_start = util::cpu_timer();
         printf("lambda=%f", lambda);
         fflush (stdout);
 #endif
         
         _Dijkstra_dist_constraint = p / lambda;
         
-        int incr_count = Dijkstra_all_dest(lambda, tmpPaths);
+        incr_count = Dijkstra_all_dest(lambda, tmpPaths);
         count += incr_count;
 #ifdef SHOW_DEBUG2
         printf(" %d relaxations in %.3f seconds\n", incr_count,
