@@ -12,6 +12,13 @@
 // ./DominantPath -office 3 -sx 12 -sy 12 -p0x 10 -p0y 10 -p1x 35.5 -p1y 44.5
 // ./DominantPath -office 4 -sx 12 -sy 12 -p0x 2 -p0y 1 -p1x 20.5 -p1y 45.5
 // ./DominantPath -sd 181 -p1x 8.5 -p1y 3.3
+//
+// example heatmaps
+// ./DominantPath -mode 3 -gm 10.0
+// ./DominantPath -mode 3 -sx 12 -sy 7 -p0x 34.0 -p0y 15.0 -office 1 -gm 2.0
+// ./DominantPath -mode 3 -sx 6 -sy 10 -p0x 25.0 -p0y 17.0 -office 2 -gm 4.0
+// ./DominantPath -mode 3 -sx 10 -sy 10 -p0x 5.25 -p0y 12.5 -office 3 -gm 4.0
+// ./DominantPath -mode 3 -sx 10 -sy 10 -p0x 5.25 -p0y 12.5 -office 4 -gm 4.0
 
 #include <cmath>
 #include <cstdlib>
