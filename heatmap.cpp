@@ -49,7 +49,7 @@ struct myData {
     cv::Mat *image;
     int totx;
     int toty;
-    int precision;
+    double precision;
     double p;
     Point *pts;
 };
@@ -58,7 +58,7 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
     myData *md = (myData *)data;
     double fScale = md->dmp->fScale;
     double fShift = md->dmp->fShift;
-    int precision = md->precision;
+    double precision = md->precision;
 
     int xx = (int)(double(x-fShift) / fScale * precision);
     int yy = (int)(double(y-fShift) / fScale * precision);
