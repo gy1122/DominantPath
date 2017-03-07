@@ -17,13 +17,13 @@
 
 #define SHOW_DEBUG
 
-cv::Mat myPrintPath(cv::Mat &image, Path &path, double fScale, double fShift) {
+cv::Mat myPrintPath(cv::Mat &image, Path &path, double fScale, double fShift, double p) {
 
     cv::Mat image2 = image.clone();
 
     DijkstraPoint ptr1 = path.v[0];
 
-    printf("(L=%f, D=%f): ", path.L, path.D);
+    printf("(L=%f, D=%f) loss=%f: ", path.L, path.D, path.L + p * std::log(path.D));
     printf("%d", ptr1.p->i);
 
     for (int j=1; j < (int) path.v.size(); j++) {
@@ -49,6 +49,7 @@ struct myData {
     int totx;
     int toty;
     int precision;
+    double p;
 };
 
 void callbackfunc(int event, int x, int y, int flags, void *data) {
@@ -62,7 +63,7 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
 
     if (event == cv::EVENT_LBUTTONDOWN && xx >= 0 && yy >= 0 && xx < md->totx && yy < md->toty){
         printf("(%d,%d)  (%d,%d)", x,y,xx,yy);
-        cv::Mat image = myPrintPath(*(md->image), md->paths[xx * md->toty + yy-1], fScale, fShift);
+        cv::Mat image = myPrintPath(*(md->image), md->paths[xx * md->toty + yy-1], fScale, fShift, md->p);
         cv::imshow( "Display window", image );
     } if (event == cv::EVENT_RBUTTONDOWN) {
         cv::imshow( "Display window", *(md->image));
@@ -159,6 +160,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     md.totx = totx;
     md.toty = toty;
     md.precision = precision;
+    md.p = p;
 
     namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
     cv::setMouseCallback("Display window", callbackfunc, &md);

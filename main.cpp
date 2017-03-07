@@ -149,7 +149,7 @@ int main(int argc, const char * argv[]) {
     int npaths = 2;
     if (mode == 0) {
         double break_start = cpu_timer();
-        int count = dmp.BreakPoints(0, 2, limit, paths, npaths);
+        int count = dmp.BreakPoints(0, 1, limit, paths, npaths);
         std::cerr << count << " relaxations performed in "
                   << (cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
@@ -176,7 +176,7 @@ int main(int argc, const char * argv[]) {
                     flp.getWidth(), flp.getHeight(),
                     grid_measurements);
     }
-
+    
     delete [] paths;
 
     return 0;
