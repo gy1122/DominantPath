@@ -130,6 +130,7 @@ struct DijkstraLabel {
 
     DijkstraPoint   from;
     double          val;
+    double          dist;
     double          radar;
     bool            visited;
 

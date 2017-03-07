@@ -228,13 +228,15 @@ int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint,
                                   edge->target_i);
 
             double newval2 = newrad + parametricWeight(edge->loss, edge->dist, lambda);
+            double newdist = getDijkstraLabel(dpoint).dist + edge->dist;
 
             // check if this can be propagated one step forward
-            if (newval2 < _Dijkstra_dist_constraint && newval2 < getDijkstraVal(epoint2)) {
+            if (newdist <= _Dijkstra_dist_constraint && newval2 < getDijkstraVal(epoint2)) {
 
                 assert(!getDijkstraLabel(epoint2).visited);
 
                 Q.decrease_key(epoint2, newval2);
+                getDijkstraLabel(epoint2).dist = newdist;
                 getDijkstraLabel(epoint2).from = dpoint;
                 getDijkstraLabel(epoint2).l_e = loss + edge->loss;
                 getDijkstraLabel(epoint2).d_e = edge->dist;
@@ -254,9 +256,11 @@ void DominantPath::relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edg
     // relax edge.target
     double val = getDijkstraVal(epoint);
     double newval = getDijkstraLabel(dpoint).val + parametricWeight(edge.loss, edge.dist, lambda);
+    double newdist = getDijkstraLabel(dpoint).dist + edge.dist;
 
-    if (newval < _Dijkstra_dist_constraint && newval < val) {
+    if (newdist <= _Dijkstra_dist_constraint && newval < val) {
         Q.decrease_key(epoint, newval);
+        getDijkstraLabel(epoint).dist = newdist;
         getDijkstraLabel(epoint).from = dpoint;
         getDijkstraLabel(epoint).d_e = edge.dist;
         getDijkstraLabel(epoint).l_e = edge.loss;
@@ -275,6 +279,7 @@ int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
 
     DijkstraPoint source(_G2totPoints[s]);
     getDijkstraLabel(source).val = 0.0;
+    getDijkstraLabel(source).dist = 0.0;
     Q.add(source);
 
     // This is the counter for the number of relaxations
@@ -520,8 +525,8 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     double *vals = new double[_nG2Points-1];
     double lambda = 0.0;
     double D_min = INFINITY;
-    //double D_max = 0.0;
-    double bar_f = 0.0;
+    double D_max = 0.0;
+    //double bar_f = 0.0;
     double min_lambda = 0.0;
     
     int numDijkstra = 0;
@@ -539,37 +544,49 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     count += Dijkstra_all_dest(INFINITY, tmpPaths);
     for (int i = 0; i < _nG2Points - 1; i++) {
         if (tmpPaths[i].D < D_min) D_min = tmpPaths[i].D;
+        
+        double obj = tmpPaths[i].L + p * std::log(tmpPaths[i].D);
+        vals[i] = obj;
+        paths[i] = tmpPaths[i];
     }
     
     numDijkstra++;
     
-    // Find the longest edge? or p exp(-bar_f/p) / D_min?
-    // I think instead of this longest edge, we can use bar_f to give a upper bound
-    /*
-    for (int i = 0; i < _nG2totPoints; i++) {
-        for (int j = 0; j < _G2totPoints[i]->links.size(); j++) {
-            if (_G2totPoints[i]->links[j].dist > D_max) D_max = _G2totPoints[i]->links[j].dist;
+    // Find D_max
+    count += Dijkstra_all_dest(0, tmpPaths);
+    for (int i = 0; i < _nG2Points - 1; i++) {
+        if (tmpPaths[i].D > D_max) D_max = tmpPaths[i].D;
+        
+        double obj = tmpPaths[i].L + p * std::log(tmpPaths[i].D);
+        if (obj < vals[i]) {
+            vals[i] = obj;
+            paths[i] = tmpPaths[i];
         }
     }
-    D_max = D_max * _nG2totPoints;
-    */
+    
     
     // bar_f: the upper bound on the objective given by arbitrary path.  Choose the largest one among all measurement points
+    /*
     for (int i = 0; i < _nG2Points - 1; i++) {
         double tmpVal = tmpPaths[i].L + p * std::log(tmpPaths[i].D / D_min);
         if ( tmpVal > bar_f ) bar_f = tmpVal;
     }
+     */
     
-    min_lambda = p * exp(-bar_f/p) / D_min;
+    //min_lambda = p * exp(-bar_f/p) / D_min;
+    min_lambda = p / D_max;
     
-    //printf("D_max: %f  bar_f: %f\n", D_max, D_min/exp(-bar_f/p));
+    printf("D_max: %f\n", D_max);
     //assert(D_min/exp(-bar_f/p) <= D_max);
     
     
     //
-    lambda = p / D_min;
+    lambda = p / D_min / step;
     
     while (lambda >= min_lambda) {
+        
+        lambda = lambda * step;
+        
 #ifdef SHOW_DEBUG2
         printf("lambda=%f\n", lambda);
 #endif
@@ -583,9 +600,14 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
                 vals[i] = obj;
                 paths[i] = tmpPaths[i];
             }
+            
+            /* for debug
+            if (i == 10369) {
+                printf("H %f %f dist_con=%f\n", obj, vals[i], _Dijkstra_dist_constraint);
+            }
+             */
         }
         
-        lambda = lambda * step;
         numDijkstra++;
     }
     

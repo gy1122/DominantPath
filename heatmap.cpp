@@ -50,6 +50,7 @@ struct myData {
     int toty;
     int precision;
     double p;
+    Point *pts;
 };
 
 void callbackfunc(int event, int x, int y, int flags, void *data) {
@@ -62,7 +63,7 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
     int yy = (int)(double(y-fShift) / fScale * precision);
 
     if (event == cv::EVENT_LBUTTONDOWN && xx >= 0 && yy >= 0 && xx < md->totx && yy < md->toty){
-        printf("(%d,%d)  (%d,%d)", x,y,xx,yy);
+        printf("%d (%d,%d)  (%f,%f)", xx*md->toty+yy, xx,yy,md->pts[xx*md->toty+yy].x,md->pts[xx*md->toty+yy].y);
         cv::Mat image = myPrintPath(*(md->image), md->paths[xx * md->toty + yy-1], fScale, fShift, md->p);
         cv::imshow( "Display window", image );
     } if (event == cv::EVENT_RBUTTONDOWN) {
@@ -89,6 +90,8 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 
     // Set (sx, sy) to be the source
     std::swap( pts[0], pts[int(sx * precision) * toty + int(sy * precision)]);
+    
+    printf("The actual source is (%f,%f)", pts[0].x, pts[0].y);
 
     // Set up the points
     _mPoints = pts;
@@ -166,6 +169,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     md.toty = toty;
     md.precision = precision;
     md.p = p;
+    md.pts = pts;
 
     namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
     cv::setMouseCallback("Display window", callbackfunc, &md);
