@@ -337,6 +337,7 @@ int DominantPath::Dijkstra_all_dest(double lambda, Path* &paths) {
     // source is 0
     DijkstraPoint source(_G2totPoints[0]);
     getDijkstraLabel(source).val = 0.0;
+    getDijkstraLabel(source).dist = 0.0;
     Q.add(source);
     
     // This is the counter for the number of relaxations
