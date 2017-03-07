@@ -53,7 +53,21 @@ public:
     Floorplan();
     ~Floorplan();
 
-    void genRandomFloorplan(int x, int y, double wallloss, double angleloss, unsigned seed = 0);
+    void genRandomFloorplan(int x, int y, double wallloss, double angleloss,
+                            double exterior_wallloss, unsigned seed = 0);
+
+    void genOffice1(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice2(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice3(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
+    void genOffice4(int nx, int ny, double wx, double wy, double hall,
+                    double wallloss, double angleloss,
+                    double exterior_wallloss);
 
     inline int getNumCorners() const { return _nCorners; }
     inline Corner *getCornerPtr(int i) const { return &_corners[i]; }
@@ -63,6 +77,9 @@ public:
 
     int save(const char *filename) const;
     int load(const char *filename);
+
+    double getWidth() const;
+    double getHeight() const;
 
 private:
 
@@ -357,8 +374,7 @@ public:
     //   - npaths: number of paths to be printed
     //   - paths: the list for the paths to be printed
     // ---------------------------------------------
-    void printPaths(int npaths, Path* paths);
-    
+    void printPaths(int npaths, Path *paths, double logd_scale);
     // This function finds the heatmap
     void heatmap(double p, double step, int sx, int sy, int x, int y, int precision);
 
@@ -387,7 +403,7 @@ private:
     int Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int end_idx, double wall_loss, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
     void backTrack(double lambda, int s, int t, Path &path);
-    
+
     double _Dijkstra_dist_constraint;
 
     // Helper functions:
@@ -412,15 +428,15 @@ private:
     PointG2     *_G2Points;
     CornerG2    *_G2Corners;
 
-    // Also create a combined list for references.  
+    // Also create a combined list for references.
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
 
 public:
-    double      fScale;
-    double      fShift;
     double      fSizeX;
     double      fSizeY;
+    double      fShift;
+    double      fScale;
 };
 
 #endif /* defined(__DominantPath__floorplan__) */
