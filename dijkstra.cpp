@@ -618,7 +618,7 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         fflush (stdout);
 #endif
         
-        _Dijkstra_dist_constraint = p / lambda;
+        _Dijkstra_dist_constraint = p / lambda / step;
         
         incr_count = Dijkstra_all_dest(lambda, tmpPaths);
         count += incr_count;
