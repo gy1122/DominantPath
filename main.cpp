@@ -18,16 +18,9 @@
 #include <cstdio>
 #include <iostream>
 #include <cstring>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include "floorplan.h"
 #include "experiments.h"
-
-double cpu_timer() {
-    struct rusage usage;
-    (void) getrusage(RUSAGE_SELF, &usage);
-    return usage.ru_utime.tv_sec * 1.0 + usage.ru_utime.tv_usec / 1e6;
-}
+#include "cputimer.h"
 
 int main(int argc, const char * argv[]) {
     const double pi = std::abs(std::atan2(0,-1));
@@ -101,12 +94,12 @@ int main(int argc, const char * argv[]) {
     }
 
     if (load) {
-        double start_time = cpu_timer();
+        double start_time = util::cpu_timer();
         flp.load(load);
-        std::cerr << "Floorplan loaded in " << (cpu_timer() - start_time)
+        std::cerr << "Floorplan loaded in " << (util::cpu_timer() - start_time)
                   << " cpu seconds." << std::endl;
     } else {
-        double start_time = cpu_timer();
+        double start_time = util::cpu_timer();
         if (office == 1) {
             flp.genOffice1(size_x, size_y, office_x, office_y, hall_width,
                            wall_loss, angle_loss, exterior_wall_loss);
@@ -123,7 +116,7 @@ int main(int argc, const char * argv[]) {
             flp.genRandomFloorplan(size_x, size_y, wall_loss, angle_loss,
                                    exterior_wall_loss, seed);
         }
-        std::cerr << "Floorplan generated in " << (cpu_timer() - start_time)
+        std::cerr << "Floorplan generated in " << (util::cpu_timer() - start_time)
                   << " cpu seconds." << std::endl;
     }
 
@@ -131,28 +124,30 @@ int main(int argc, const char * argv[]) {
               << flp.getNumWalls() << " walls." << std::endl;
 
     if (save) {
-        double start_time = cpu_timer();
+        double start_time = util::cpu_timer();
         flp.save(save);
-        std::cerr << "Floorplan saved in " << (cpu_timer() - start_time)
+        std::cerr << "Floorplan saved in " << (util::cpu_timer() - start_time)
                   << " cpu seconds." << std::endl;
     }
 
 
     DominantPath dmp(&flp, 3, pts);
     if (mode != 3) {
-        double geng2_start = cpu_timer();
+        double geng2_start = util::cpu_timer();
         dmp.generateG2();
-        std::cerr << "G2 generated in " << (cpu_timer() - geng2_start)
-                  << " cpu seconds." << std::endl;
+        std::cerr << "G2 generated " << dmp.numG2Points() << " points, "
+                  << dmp.numG2Links() << " links in "
+                  << (util::cpu_timer() - geng2_start) << " cpu seconds."
+                  << std::endl;
     }
 
     Path *paths = new Path[limit];
     int npaths = 2;
     if (mode == 0) {
-        double break_start = cpu_timer();
+        double break_start = util::cpu_timer();
         int count = dmp.BreakPoints(0, 1, limit, paths, npaths);
         std::cerr << count << " relaxations performed in "
-                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << (util::cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
         if (display_paths) {
             dmp.printPaths(npaths, paths, p);
@@ -161,16 +156,16 @@ int main(int argc, const char * argv[]) {
             printf("%f\n", (paths[i].L+p*std::log(paths[i].D)));
         }
     } else if (mode == 1) {
-        double break_start = cpu_timer();
+        double break_start = util::cpu_timer();
         dmp.Dijkstra_all_dest(100, paths);
         std::cerr << "Dijkstra_all_dest finished in "
-                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << (util::cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
     } else if (mode == 2) {
-        double break_start = cpu_timer();
+        double break_start = util::cpu_timer();
         dmp.Approx_all_dest(p, step, paths);
         std::cerr << "Approx_all_dest finished in "
-                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << (util::cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
     } else if (mode == 3) {
         dmp.heatmap(p, step, pts[0].x, pts[0].y,

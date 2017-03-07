@@ -6,6 +6,7 @@
 //  Copyright (c) 2017年 Ger Yang. All rights reserved.
 //
 
+#include "cputimer.h"
 #include "floorplan.h"
 #include <algorithm>
 #include <iostream>
@@ -48,7 +49,7 @@ struct myData {
     cv::Mat *image;
     int totx;
     int toty;
-    int precision;
+    double precision;
     double p;
     Point *pts;
 };
@@ -57,7 +58,7 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
     myData *md = (myData *)data;
     double fScale = md->dmp->fScale;
     double fShift = md->dmp->fShift;
-    int precision = md->precision;
+    double precision = md->precision;
 
     int xx = (int)(double(x-fShift) / fScale * precision);
     int yy = (int)(double(y-fShift) / fScale * precision);
@@ -91,22 +92,39 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     // Set (sx, sy) to be the source
     std::swap( pts[0], pts[int(sx * precision) * toty + int(sy * precision)]);
     
-    printf("The actual source is (%f,%f)", pts[0].x, pts[0].y);
+    printf("The actual source is (%f,%f)\n", pts[0].x, pts[0].y);
 
     // Set up the points
     _mPoints = pts;
     _nmPoints = totx * toty;
 
     // Generate G2
+#ifdef SHOW_DEBUG
+    double geng2_start = util::cpu_timer();
+#endif
     generateG2();
 
 #ifdef SHOW_DEBUG
-    std::cerr << "G2 generated." << std::endl;
+    std::cerr << "G2 generated " << numG2Points() << " points ("
+              << numG2Corners() << " corners, " << numG2MeasurementPoints()
+              << " meas), " << numG2Links() << " links in "
+              << (util::cpu_timer() - geng2_start) << " cpu seconds."
+              << std::endl;
 #endif
 
     // Run approx alg
     Path *paths = new Path[totx * toty - 1];
-    Approx_all_dest(p, step, paths);
+    
+#ifdef SHOW_DEBUG
+    double approx_start = util::cpu_timer();
+#endif
+    int count = Approx_all_dest(p, step, paths);
+#ifdef SHOW_DEBUG
+    std::cerr << "Approximation completed " << count << " relaxations in "
+              << (util::cpu_timer() - approx_start) << " cpu seconds."
+              << std::endl;
+#endif
+
     double max_loss = 0.0;
     for (int i=0; i < totx*toty-1; i++) {
         if (max_loss < paths[i].L + p * std::log(paths[i].D))

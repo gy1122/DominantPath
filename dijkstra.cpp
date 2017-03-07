@@ -6,6 +6,7 @@
 //  Copyright (c) 2016年 Ger Yang. All rights reserved.
 //
 
+#include "cputimer.h"
 #include "floorplan.h"
 #include <cmath>
 #include <set>
@@ -589,12 +590,20 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         lambda = lambda * step;
         
 #ifdef SHOW_DEBUG2
-        printf("lambda=%f\n", lambda);
+        double dijkstra_start = util::cpu_timer();
+        printf("lambda=%f", lambda);
+        fflush (stdout);
 #endif
         
         _Dijkstra_dist_constraint = p / lambda;
         
-        count += Dijkstra_all_dest(lambda, tmpPaths);
+        int incr_count = Dijkstra_all_dest(lambda, tmpPaths);
+        count += incr_count;
+#ifdef SHOW_DEBUG2
+        printf(" %d relaxations in %.3f seconds\n", incr_count,
+               (util::cpu_timer() - dijkstra_start));
+        fflush (stdout);
+#endif
         for (int i = 0; i < _nG2Points - 1; i++) {
             double obj = tmpPaths[i].L + p * std::log(tmpPaths[i].D);
             if (obj < vals[i]) { // Keep the better path

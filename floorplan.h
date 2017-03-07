@@ -322,6 +322,12 @@ public:
     // This function generates G2 from Floorplan *_flp
     void generateG2();
 
+    // Stats about G2
+    int numG2Points() const;
+    int numG2Corners() const;
+    int numG2MeasurementPoints() const;
+    int numG2Links() const;
+
     // This function performs Dijkstra algorithm to find the shortest path from s to t
     // ---------------------------------------------
     // Inputs:
