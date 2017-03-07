@@ -86,7 +86,7 @@ void DominantPath::printG2(int p) {
     cv::waitKey(0);
 }
 
-void DominantPath::printPaths(int npaths, Path *paths, double logd_scale) {
+void DominantPath::printPaths(int npaths, Path *paths, double p) {
 
     cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
     makeFloorplanImage(image);
@@ -104,8 +104,8 @@ void DominantPath::printPaths(int npaths, Path *paths, double logd_scale) {
                  -(paths[i].L-paths[i-1].L)/(paths[i].D-paths[i-1].D));
         }
         printf("(L=%f, D=%f, loss=%f, p/D=%f): ", paths[i].L, paths[i].D,
-               logd_scale * log(paths[i].D) + paths[i].L,
-               logd_scale / paths[i].D);
+               p * std::log(paths[i].D) + paths[i].L,
+               p / paths[i].D);
         printf("%d", ptr1.p->i);
 
         for (int j=1; j < (int) paths[i].v.size(); j++) {

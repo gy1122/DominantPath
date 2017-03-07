@@ -49,8 +49,17 @@ int main(int argc, const char * argv[]) {
     const char *load = 0;
 
     int display_paths = 1;
+    double grid_measurements = 5.0;
+    double step = 0.5;
 
-    double logd_scale = 20.0/log(10.0);
+    // quick hack for various computations
+    // mode 0 == s-t breakpoint path computation
+    // mode 1 == all destinations
+    // mode 2 == approx all dest
+    // mode 3 == heatmap
+    int mode = 0;
+
+    double p = 20.0/log(10.0);
 
     // This program finds the paths from pts[0] to pts[1]
     Point pts[3];
@@ -78,7 +87,10 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-p1x") == 0) pts[1].x = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-p1y") == 0) pts[1].y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-dp") == 0) display_paths = atoi(argv[++argi]);
-        else if (strcmp(argv[argi], "-scale") == 0) logd_scale = atof(argv[++argi]);
+        else if (strcmp(argv[argi], "-gm") == 0) grid_measurements = atof(argv[++argi]);
+        else if (strcmp(argv[argi], "-step") == 0) step = atof(argv[++argi]);
+        else if (strcmp(argv[argi], "-mode") == 0) mode = atoi(argv[++argi]);
+        else if (strcmp(argv[argi], "-p") == 0) p = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-office") == 0) office = atoi(argv[++argi]);
         else if (strcmp(argv[argi], "-office_x") == 0) office_x = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-office_y") == 0) office_y = atof(argv[++argi]);
@@ -126,40 +138,44 @@ int main(int argc, const char * argv[]) {
 
 
     DominantPath dmp(&flp, 3, pts);
-    //    double geng2_start = cpu_timer();
-    //    DominantPath dmp(&flp, 2, pts);
-    //    dmp.generateG2();
-    //    std::cerr << "G2 generated in " << (cpu_timer() - geng2_start)
-    //              << " cpu seconds." << std::endl;
+    if (mode != 3) {
+        double geng2_start = cpu_timer();
+        dmp.generateG2();
+        std::cerr << "G2 generated in " << (cpu_timer() - geng2_start)
+                  << " cpu seconds." << std::endl;
+    }
 
     Path *paths = new Path[limit];
     int npaths = 2;
-    //int count = dmp.BreakPoints(0, 2, limit, paths, npaths);
-    //printf("%d relaxation performed.\n", count);
-    //dmp.Dijkstra_all_dest(100, paths);
-
-    /*
-    dmp.Approx_all_dest(5.0, 0.5, paths);
-
-    Path *paths = new Path[limit];
-    int npaths = 2;
-    //    double break_start = cpu_timer();
-    //    int count = dmp.BreakPoints(0, 1, limit, paths, npaths);
-    //    std::cerr << count << " relaxations performed in "
-    //              << (cpu_timer() - break_start) << " cpu seconds." << std::endl;
-    if (display_paths) {
-        dmp.printPaths(npaths, paths, logd_scale);
+    if (mode == 0) {
+        double break_start = cpu_timer();
+        int count = dmp.BreakPoints(0, 2, limit, paths, npaths);
+        std::cerr << count << " relaxations performed in "
+                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << std::endl;
+        if (display_paths) {
+            dmp.printPaths(npaths, paths, p);
+        }
+        for (int i = 0; i < npaths; i++) {
+            printf("%f\n", (paths[i].L+p*std::log(paths[i].D)));
+        }
+    } else if (mode == 1) {
+        double break_start = cpu_timer();
+        dmp.Dijkstra_all_dest(100, paths);
+        std::cerr << "Dijkstra_all_dest finished in "
+                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << std::endl;
+    } else if (mode == 2) {
+        double break_start = cpu_timer();
+        dmp.Approx_all_dest(p, step, paths);
+        std::cerr << "Approx_all_dest finished in "
+                  << (cpu_timer() - break_start) << " cpu seconds."
+                  << std::endl;
+    } else if (mode == 3) {
+        dmp.heatmap(p, step, pts[0].x, pts[0].y,
+                    flp.getWidth(), flp.getHeight(),
+                    grid_measurements);
     }
-
-    dmp.BreakPoints(0, 2, limit, paths, npaths);
-    dmp.printPaths(npaths, paths);
-
-    for (int i = 0; i < npaths; i++) {
-        printf("%f\n", (paths[i].L+5.0*std::log(paths[i].D)));
-    }
-     */
-
-    dmp.heatmap(5.0, 0.5, 45, 45, 15, 15, 5);
 
     delete [] paths;
 

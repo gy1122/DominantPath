@@ -374,9 +374,9 @@ public:
     //   - npaths: number of paths to be printed
     //   - paths: the list for the paths to be printed
     // ---------------------------------------------
-    void printPaths(int npaths, Path *paths, double logd_scale);
+    void printPaths(int npaths, Path *paths, double p);
     // This function finds the heatmap
-    void heatmap(double p, double step, int sx, int sy, int x, int y, int precision);
+    void heatmap(double p, double step, double sx, double sy, double x, double y, double precision);
 
 private:
 
