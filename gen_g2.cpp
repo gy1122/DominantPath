@@ -68,6 +68,8 @@ fScale(std::min((fSizeX-4*fShift)/flp->getWidth(),
 
 DominantPath::~DominantPath() {
     if (_G2Points) delete [] _G2Points;
+    if (_G2Corners) delete [] _G2Corners;
+    if (_G2totPoints) delete [] _G2totPoints;
 }
 
 // This comparing function is used when sorting the links in a corner
