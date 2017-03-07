@@ -30,7 +30,7 @@ cv::Mat myPrintPath(cv::Mat &image, Path &path, double fScale, double fShift, do
         DijkstraPoint ptr2 = path.v[j];
         cv::Point p1(ptr1.p->x() * fScale + fShift, ptr1.p->y() * fScale + fShift);
         cv::Point p2(ptr2.p->x() * fScale + fShift, ptr2.p->y() * fScale + fShift);
-        cv::line(image2, p1, p2, cv::Scalar(255,0,0), 2);
+        cv::line(image2, p1, p2, cv::Scalar(0,0,255), 2);
 
         printf(" -> %d", ptr2.p->i);
 
