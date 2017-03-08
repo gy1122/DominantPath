@@ -27,6 +27,6 @@ private:
     double      _p;
 };
 
-int coverage(Floorplan *flp, DominantPath &dmp);
+int coverage(DominantPath &dmp);
 
 #endif /* defined(__DominantPath__experiments__) */

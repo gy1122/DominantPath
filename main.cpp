@@ -139,7 +139,7 @@ int main(int argc, const char * argv[]) {
 
 
     DominantPath dmp(&flp, 3, pts);
-    if (mode != 3) {
+    if (mode != 3 && mode != 6) {
         double geng2_start = util::cpu_timer();
         dmp.generateG2();
         std::cerr << "G2 generated " << dmp.numG2Points() << " points, "
@@ -185,11 +185,14 @@ int main(int argc, const char * argv[]) {
         rsp.test(100);
     } else if (mode == 5) {
         double break_start = util::cpu_timer();
-        //dmp.Dijkstra_all_dest_corner(INFINITY);
-        coverage(&flp, dmp);
+        coverage(dmp);
         std::cerr << "coverage finished in "
         << (util::cpu_timer() - break_start) << " cpu seconds."
         << std::endl;
+    } else if (mode == 6) {
+        dmp.ratio_all_measurement(pts[0].x, pts[0].y,
+                                  flp.getWidth(), flp.getHeight(),
+                                  grid_measurements);
     }
     
     delete [] paths;

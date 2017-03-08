@@ -81,7 +81,7 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
 }
 
 
-int coverage(Floorplan *flp, DominantPath &dmp) {
+int coverage(DominantPath &dmp) {
     
     int count = 0.0;
     double max_D_min = 0.0;
@@ -89,7 +89,7 @@ int coverage(Floorplan *flp, DominantPath &dmp) {
     
     // Find max_D_min
     count += dmp.Dijkstra_all_dest_corner(INFINITY);
-    for (int i = 0; i < (int)flp->getNumCorners(); i++) {
+    for (int i = 0; i < (int)dmp.getNumCorners(); i++) {
         double D_min = INFINITY;
         for (int j = 0; j < (int)dmp.getCorner(i)->links.size(); j++) {
             DijkstraPoint dp(dmp.getCorner(i), j);
@@ -102,7 +102,7 @@ int coverage(Floorplan *flp, DominantPath &dmp) {
     
     // Find max_D_max
     count += dmp.Dijkstra_all_dest_corner(0);
-    for (int i = 0; i < (int)flp->getNumCorners(); i++) {
+    for (int i = 0; i < (int)dmp.getNumCorners(); i++) {
         double D_max = 0.0;
         for (int j = 0; j < (int)dmp.getCorner(i)->links.size(); j++) {
             DijkstraPoint dp(dmp.getCorner(i), j);

@@ -198,4 +198,127 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     delete[] paths;
 }
 
+void DominantPath::ratio_all_measurement(double sx, double sy, double x, double y, double precision) {
+    
+    int count = 0;
+    
+    // First create a set of measurement points
+    int totx = int(x * precision);
+    int toty = int(y * precision);
+    
+    Point *pts = new Point[totx*toty];
+    
+    int z = 0;
+    for (int i = 0; i < totx; i++) {
+        for (int j = 0; j < toty; j++, z++) {
+            pts[i * toty + j].x = double(i + 0.5)/precision;
+            pts[i * toty + j].y = double(j + 0.5)/precision;
+        }
+    }
+    
+    // Set (sx, sy) to be the source
+    std::swap( pts[0], pts[int(sx * precision) * toty + int(sy * precision)]);
+    
+    printf("The actual source is (%f,%f)\n", pts[0].x, pts[0].y);
+    
+    // Set up the points
+    _mPoints = pts;
+    _nmPoints = totx * toty;
+    
+    // Generate G2
+#ifdef SHOW_DEBUG
+    double geng2_start = util::cpu_timer();
+#endif
+    generateG2();
+    
+#ifdef SHOW_DEBUG
+    std::cerr << "G2 generated " << numG2Points() << " points ("
+    << numG2Corners() << " corners, " << numG2MeasurementPoints()
+    << " meas), " << numG2Links() << " links in "
+    << (util::cpu_timer() - geng2_start) << " cpu seconds."
+    << std::endl;
+#endif
+    
+    // Find D_min and D_max
+    Path *paths = new Path[totx * toty - 1];
+    double *D_min = new double[totx*toty-1];
+    double *D_max = new double[totx*toty-1];
+    
+#ifdef SHOW_DEBUG
+    double approx_start = util::cpu_timer();
+#endif
+    count += Dijkstra_all_dest(INFINITY, paths); // We don't actually need paths, but keep it for now.
+    for (int i = 0; i < _nG2Points-1; i++) {
+        D_min[i] = paths[i].D;
+    }
+    
+    count += Dijkstra_all_dest(0, paths);
+    for (int i = 0; i < _nG2Points-1; i++) {
+        D_max[i] = paths[i].D;
+    }
+#ifdef SHOW_DEBUG
+    std::cerr << "Dijkstra completed " << count << " relaxations in "
+    << (util::cpu_timer() - approx_start) << " cpu seconds."
+    << std::endl;
+#endif
+    
+    double max_ratio = 0.0;
+    for (int i=0; i < totx*toty-1; i++) {
+        double ratio = D_max[i]/D_min[i];
+        max_ratio = std::max(max_ratio, ratio);
+    }
+    
+#ifdef SHOW_DEBUG
+    printf("Max ratio: %f\n", max_ratio);
+    std::cerr << "Generating heat map." << std::endl;
+#endif
+    
+    
+    cv::Mat image1(fSizeX, fSizeY, CV_8UC1, cv::Scalar(255));
+    cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
+    
+    
+    // Draw results
+    
+    for (int i=1; i < totx*toty; i++) {
+        double ratio = D_max[i]/D_min[i];
+#ifdef SHOW_DEBUG
+        //printf("Node %d (%f,%f)  loss: %f\n", i, pts[i].x, pts[i].y, max_loss);
+        //if (i == sx * toty + sy - 2)
+#endif
+        cv::Point p1((pts[i].x-0.51/precision) * fScale +fShift, (pts[i].y-0.51/precision) * fScale + fShift);
+        cv::Point p2((pts[i].x+0.51/precision) * fScale +fShift, (pts[i].y+0.51/precision) * fScale + fShift);
+        cv::Rect2d rect(p1, p2);
+        cv::rectangle(image1, rect, cv::Scalar(int((1.0-ratio/max_ratio)*256)), -1);
+    }
+    
+    cv::applyColorMap(image1, image, cv::COLORMAP_JET);
+    
+    cv::Point center(pts[0].x * fScale +fShift, pts[0].y * fScale + fShift);
+    cv::circle(image, center, 4, cv::Scalar(255,0,0), 2);
+    
+    // Draw floorplan
+    for (int i=0; i < _nG2Corners; i++) {
+        CornerG2 *point = &_G2Corners[i];
+        cv::Point center(point->x() * fScale +fShift, point->y() * fScale + fShift);
+        cv::circle(image, center, 3, cv::Scalar(0,0,0));
+    }
+    
+    for (int i=0; i < _flp->getNumWalls(); i++) {
+        Wall *wall = _flp->getWallPtr(i);
+        cv::Point p1(wall->c1->x * fScale + fShift, wall->c1->y * fScale + fShift);
+        cv::Point p2(wall->c2->x * fScale + fShift, wall->c2->y * fScale + fShift);
+        cv::line(image, p1, p2, cv::Scalar(0,0,0), 2);
+    }
+    
+    namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+    cv::imshow( "Display window", image );
+    cv::waitKey(0);
+    
+    delete[] pts;
+    delete[] paths;
+    delete[] D_min;
+    delete[] D_max;
+}
+
 #endif

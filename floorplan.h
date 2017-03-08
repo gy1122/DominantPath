@@ -401,8 +401,17 @@ public:
     //   - paths: the list for the paths to be printed
     // ---------------------------------------------
     void printPaths(int npaths, Path *paths, double p);
+    
     // This function finds the heatmap
+    //   - p:
+    //   - step: step for Approx_all_dest
+    //   - sx, sy: source coord
+    //   - x, y: size
+    //   - precision: how many point within unit dist
+    // ---------------------------------------------
     void heatmap(double p, double step, double sx, double sy, double x, double y, double precision);
+    
+    void ratio_all_measurement(double sx, double sy, double x, double y, double precision);
 
 private:
 
@@ -465,6 +474,7 @@ public:
     double      fScale;
     
     inline CornerG2 *getCorner(int i) const { return &_G2Corners[i]; }
+    inline int      getNumCorners() const { return _nG2Corners; }
 };
 
 #endif /* defined(__DominantPath__floorplan__) */
