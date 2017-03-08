@@ -441,7 +441,7 @@ int DominantPath::Dijkstra_all_dest_corner(double lambda) {
         
     }
     
-    
+#ifdef SHOW_DEBUG
     // Below are some tests
     bool all_visited = true;
     for (int i = 0; i < _nG2Corners; i++) {
@@ -455,6 +455,7 @@ int DominantPath::Dijkstra_all_dest_corner(double lambda) {
         all_visited = all_visited && visited;
     }
     if (all_visited) printf("All corners are visited\n");
+#endif
     
     // Return the number of relaxations
     return count;

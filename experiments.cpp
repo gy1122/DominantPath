@@ -98,7 +98,7 @@ int coverage(Floorplan *flp, DominantPath &dmp) {
         max_D_min = std::max(D_min, max_D_min);
     }
     
-    printf("max_t D_min = %f", max_D_min);
+    printf("max_t D_min = %f\n", max_D_min);
     
     // Find max_D_max
     count += dmp.Dijkstra_all_dest_corner(0);
@@ -111,7 +111,7 @@ int coverage(Floorplan *flp, DominantPath &dmp) {
         max_D_max = std::max(D_max, max_D_max);
     }
     
-    printf("max_t D_max = %f", max_D_max);
+    printf("max_t D_max = %f\n", max_D_max);
     
     return count;
 }
