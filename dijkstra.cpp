@@ -392,6 +392,74 @@ int DominantPath::Dijkstra_all_dest(double lambda, Path* &paths) {
     return count;
 }
 
+int DominantPath::Dijkstra_all_dest_corner(double lambda) {
+    
+    const double pi = std::abs(std::atan2(0,-1));
+    
+    resetDijkstra();
+    
+    Priority_Queue Q;
+    
+    // We don't add all nodes into Q in the beginning but do that on the fly
+    // source is 0
+    DijkstraPoint source(_G2totPoints[0]);
+    getDijkstraLabel(source).val = 0.0;
+    getDijkstraLabel(source).dist = 0.0;
+    Q.add(source);
+    
+    // This is the counter for the number of relaxations
+    int count = 0;
+    
+    while (Q.size() > 0) {
+        
+        // Extract one point from the priority queue
+        DijkstraPoint dpoint = Q.extract_min();
+        getDijkstraLabel(dpoint).visited = true;
+        
+        PointG2 *point = dpoint.p;
+        
+        if (point->isCorner()) {
+            
+            double angle = point->links[dpoint.i].angle;
+            if (angle > 0) angle -= pi;
+            else angle += pi;
+            
+            int start_idx = point->searchIdx(angle);
+            
+            count += Dijkstra_cornerSwipe(Q, dpoint, point->eincr(start_idx), angle, lambda, true);
+            count += Dijkstra_cornerSwipe(Q, dpoint, start_idx, angle, lambda, false);
+            
+        } else if (point->i == 0) {
+            
+            for (int i=0; i < (int) point->links.size(); i++) {
+                EdgeG2 edge = point->links[i];
+                relaxEdge(Q, dpoint, edge, lambda);
+                count++;
+            }
+            
+        }
+        
+    }
+    
+    
+    // Below are some tests
+    bool all_visited = true;
+    for (int i = 0; i < _nG2Corners; i++) {
+        // make sure each corner is visited at least once
+        bool visited = false;
+        for (int j = 0; j < _G2Corners[i].links.size(); j++) {
+            DijkstraPoint dp(&_G2Corners[i], j);
+            visited = visited || getDijkstraLabel(dp).visited;
+        }
+        if (!visited) printf("Corner %d is not visited\n", i);
+        all_visited = all_visited && visited;
+    }
+    if (all_visited) printf("All corners are visited\n");
+    
+    // Return the number of relaxations
+    return count;
+}
+
 void DominantPath::backTrack(double lambda, int s, int t, Path &path) {
 
     path.reset();

@@ -79,3 +79,39 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
         // Now R should be lambdas[min_loss_id+1]/lambdas[min_loss_id]
     }
 }
+
+
+int coverage(Floorplan *flp, DominantPath &dmp) {
+    
+    int count = 0.0;
+    double max_D_min = 0.0;
+    double max_D_max = 0.0;
+    
+    // Find max_D_min
+    count += dmp.Dijkstra_all_dest_corner(INFINITY);
+    for (int i = 0; i < (int)flp->getNumCorners(); i++) {
+        double D_min = INFINITY;
+        for (int j = 0; j < (int)dmp.getCorner(i)->links.size(); j++) {
+            DijkstraPoint dp(dmp.getCorner(i), j);
+            if (getDijkstraLabel(dp).visited) D_min = std::min(getDijkstraLabel(dp).dist, D_min);
+        }
+        max_D_min = std::max(D_min, max_D_min);
+    }
+    
+    printf("max_t D_min = %f", max_D_min);
+    
+    // Find max_D_max
+    count += dmp.Dijkstra_all_dest_corner(0);
+    for (int i = 0; i < (int)flp->getNumCorners(); i++) {
+        double D_max = 0.0;
+        for (int j = 0; j < (int)dmp.getCorner(i)->links.size(); j++) {
+            DijkstraPoint dp(dmp.getCorner(i), j);
+            if (getDijkstraLabel(dp).visited) D_max = std::max(getDijkstraLabel(dp).dist, D_max);
+        }
+        max_D_max = std::max(D_max, max_D_max);
+    }
+    
+    printf("max_t D_max = %f", max_D_max);
+    
+    return count;
+}

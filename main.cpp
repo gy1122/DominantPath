@@ -183,6 +183,13 @@ int main(int argc, const char * argv[]) {
         rsp.size_x = flp.getWidth();
         rsp.size_y = flp.getHeight();
         rsp.test(100);
+    } else if (mode == 5) {
+        double break_start = util::cpu_timer();
+        //dmp.Dijkstra_all_dest_corner(INFINITY);
+        coverage(&flp, dmp);
+        std::cerr << "coverage finished in "
+        << (util::cpu_timer() - break_start) << " cpu seconds."
+        << std::endl;
     }
     
     delete [] paths;

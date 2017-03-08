@@ -351,6 +351,17 @@ public:
     //   - number of relaxations
     // ---------------------------------------------
     int Dijkstra_all_dest(double lambda, Path* &paths);
+    
+    // This function performs Dijkstra algorithm to find the shortest path from 0 to all dests and corners
+    // ---------------------------------------------
+    // Inputs:
+    //   - lambda: parameter for mixing two weights.  The weight will be L + labmda*D
+    //   - dists: distances for each dest and corner
+    // ---------------------------------------------
+    // Output:
+    //   - number of relaxations
+    // ---------------------------------------------
+    int Dijkstra_all_dest_corner(double lambda);
 
     // This function finds all breakpoints for s-t paths
     // ---------------------------------------------
@@ -364,6 +375,14 @@ public:
     //   - number of Dijkstra relaxations
     int BreakPoints(int s, int t, int limit, Path *paths, int &npaths);
     
+    // This function approx the min loss path for all dests
+    // ---------------------------------------------
+    // Input:
+    //   - p:
+    //   - step:
+    //   - paths: a list of paths for storing the output paths (the size should be equal to the number of measurement points - 1).
+    // Output:
+    //   - number of Dijkstra relaxations
     int Approx_all_dest(double p, double step, Path* &paths);
 
 #ifdef USE_OPEN_CV
@@ -444,6 +463,8 @@ public:
     double      fSizeY;
     double      fShift;
     double      fScale;
+    
+    inline CornerG2 *getCorner(int i) const { return &_G2Corners[i]; }
 };
 
 #endif /* defined(__DominantPath__floorplan__) */
