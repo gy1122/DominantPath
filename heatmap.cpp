@@ -286,15 +286,14 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     }
     
     // Print histogram
-    printf("Histogram for D_max/D_min");
+    printf("Histogram for D_max/D_min\n");
     int min_hist = 0;
-    int max_plus = 50;
     while (hist[min_hist]==0) min_hist++;
     for (int i = min_hist; i < num_buckets; i++) {
         printf("%f: ", i*hist_step);
-        for (int j = 0; j < hist[i] && j < max_plus; j++) printf("+");
-        if (hist[i] >= max_plus) printf("//");
-        printf(" (%d)\n", hist[i]);
+        int height = std::round(double(hist[i])/(totx*toty-1)*100.0);
+        for (int j = 0; j < height; j++) printf("+");
+        printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(totx*toty-1)*100.0);
     }
     printf("total measurement points: %d\n", totx*toty-1);
     
