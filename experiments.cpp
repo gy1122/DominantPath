@@ -55,8 +55,8 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
             }
         }
         
-        printf("minloss=%f  ", min_loss);
-        
+        printf("minloss=%f@%d  ", min_loss, min_loss_id);
+
         // Find the corresponding critical lambdas that switch from j-1 to j-th path
         double lambdas[ARR_LIMIT];
         lambdas[0] = 0.0; // min L
@@ -72,8 +72,20 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
         
         for (int j = 0; j < npaths; j++) {
             //printf("%f ", lambdas[j]);
-            printf("(%f,%f)", paths[j].L, paths[j].D);
+            printf("(%f,%f/%f)", paths[j].L, paths[j].D, lambdas[j]);
         }
+
+        // output R
+        if (min_loss_id == 0) {
+            printf(" inf_first");
+        } else if (min_loss_id == npaths-1) {
+            printf (" inf_last");
+        } else if (lambdas[min_loss_id] <= 0.0) {
+            printf (" inf_zero");
+        } else {
+            printf (" %f", lambdas[min_loss_id+1]/lambdas[min_loss_id]);
+        }
+        
         printf("\n");
         
         // Now R should be lambdas[min_loss_id+1]/lambdas[min_loss_id]
