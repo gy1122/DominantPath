@@ -255,6 +255,10 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     count += Dijkstra_all_dest(0, paths);
     for (int i = 0; i < _nG2Points-1; i++) {
         D_max[i] = paths[i].D;
+        
+        if(D_max[i] < D_min[i] && D_min[i] - D_max[i] < TINY) {
+            D_max[i] = D_min[i];
+        }
     }
 #ifdef SHOW_DEBUG
     std::cerr << "Dijkstra completed " << count << " relaxations in "
