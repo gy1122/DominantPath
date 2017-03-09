@@ -270,6 +270,38 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     
 #ifdef SHOW_DEBUG
     printf("Max ratio: %f\n", max_ratio);
+#endif
+    
+    // Print histogram?
+    double hist_step = 0.01;
+    int num_buckets = int(max_ratio/hist_step) + 1;
+    int *hist = new int[num_buckets];
+    
+    for (int i = 0; i < num_buckets; i++)
+        hist[i] = 0;
+    
+    for (int i = 0; i < totx*toty-1; i++) {
+        double ratio = D_max[i]/D_min[i];
+        hist[int(ratio/hist_step)]++;
+    }
+    
+    // Print histogram
+    printf("Histogram for D_max/D_min");
+    int min_hist = 0;
+    int max_plus = 50;
+    while (hist[min_hist]==0) min_hist++;
+    for (int i = min_hist; i < num_buckets; i++) {
+        printf("%f: ", i*hist_step);
+        for (int j = 0; j < hist[i] && j < max_plus; j++) printf("+");
+        if (hist[i] >= max_plus) printf("//");
+        printf(" (%d)\n", hist[i]);
+    }
+    printf("total measurement points: %d\n", totx*toty-1);
+    
+    delete [] hist;
+    
+    // Generate heat map
+#ifdef SHOW_DEBUG
     std::cerr << "Generating heat map." << std::endl;
 #endif
     
