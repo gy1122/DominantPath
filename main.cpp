@@ -60,6 +60,8 @@ int main(int argc, const char * argv[]) {
     // mode 3 == heatmap
     int mode = 0;
 
+    int num_experiments = 100;
+
     double p = 20.0/std::log(10.0);
 
     // This program finds the paths from pts[0] to pts[1]
@@ -96,6 +98,7 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-office_x") == 0) office_x = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-office_y") == 0) office_y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-hall_width") == 0) hall_width = atof(argv[++argi]);
+        else if (strcmp(argv[argi], "-n") == 0) num_experiments = atoi(argv[++argi]);
 
         argi++;
     }
@@ -182,7 +185,7 @@ int main(int argc, const char * argv[]) {
         Random_st_pairs rsp(&flp, p);
         rsp.size_x = flp.getWidth();
         rsp.size_y = flp.getHeight();
-        rsp.test(100);
+        rsp.test(num_experiments);
     } else if (mode == 5) {
         double break_start = util::cpu_timer();
         coverage(dmp);
