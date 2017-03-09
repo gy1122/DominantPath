@@ -586,6 +586,20 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
 
     std::sort(paths, paths+npaths, mycmp_bp);
 
+    // special case: the path computed for lambda=0 could be dominated by
+    // path computed for the first positive lambda, with equal loss but
+    // better D. If so, delete it.  Because of noise in the loss values,
+    // after the sort the dominated one could be either of the first two.
+    if (npaths > 1 && std::abs(paths[0].L - paths[1].L) < TINY) {
+        if (paths[0].D >= paths[1].D) {
+            std::copy(paths+1, paths+npaths, paths);
+            --npaths;
+        } else {
+            std::copy(paths+2, paths+npaths, paths+1);
+            --npaths;
+        }
+    }
+
     return count;
 }
 
