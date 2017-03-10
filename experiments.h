@@ -17,7 +17,10 @@ public:
     ~Random_st_pairs();
     
     void test(int nTests, unsigned seed = 123);
-    
+
+    double expected_loss(double r, int npaths, const Path* paths,
+                         const double* lambdas) const;
+
     double         size_x;
     double         size_y;
     

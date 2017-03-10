@@ -9,7 +9,9 @@
 #include "experiments.h"
 #include <cmath>
 #include <cassert>
+#include <functional>
 #include <random>
+#include <set>
 #define ARR_LIMIT 100
 
 Random_st_pairs::Random_st_pairs(Floorplan *flp, double p):_flp(flp), _nTests(0), _p(p) {
@@ -18,6 +20,82 @@ Random_st_pairs::Random_st_pairs(Floorplan *flp, double p):_flp(flp), _nTests(0)
 
 Random_st_pairs::~Random_st_pairs() {
     
+}
+
+double Random_st_pairs::expected_loss(double r, int npaths, const Path* paths,
+                                      const double* lambdas) const {
+    double min_interval_loss = INFINITY;
+    const double log_r = std::log(r);
+    struct LossPoint {
+        double lambda;
+        double lambda_end;
+        double loss;
+        bool add;
+        std::multiset<double>::const_iterator active_iterator;
+        LossPoint(double _lambda, double _loss, bool _add,
+                  double _lambda_end = 0.0) :
+            lambda(_lambda), lambda_end(_lambda_end), loss(_loss), add(_add) {}
+    };
+    typedef std::function<bool(const LossPoint&, const LossPoint&)>
+        LossPointCmp;
+    typedef std::set<LossPoint,LossPointCmp> LossSet;
+    LossSet losses([](const LossPoint& a, const LossPoint& b) {
+            return (a.lambda < b.lambda ||
+                    (a.lambda == b.lambda && a.add && !b.add) ||
+                    (a.lambda == b.lambda && a.add == b.add &&
+                     a.loss < b.loss));
+        });
+    std::multiset<double> active_losses;
+
+    for (int i=0; i<npaths; ++i) {
+        double loss = paths[i].L + _p * std::log(paths[i].D);
+        if (i == 0 || i == npaths-1) {
+            if (loss < min_interval_loss) {
+                min_interval_loss = loss;
+            }
+            continue;
+        }
+        double log_lambda1 = std::log(lambdas[i]) / log_r;
+        double log_lambda2 = std::log(lambdas[i+1]) / log_r;
+        if (log_lambda2 - log_lambda1 >= 1.0) {
+            if (loss < min_interval_loss) {
+                min_interval_loss = loss;
+            }
+        } else {
+            double log_lambda1_mod = std::fmod(log_lambda1, 1.0);
+            double log_lambda2_mod = std::fmod(log_lambda2, 1.0);
+            if (log_lambda1_mod < 0.0) log_lambda1_mod += 1.0;
+            if (log_lambda2_mod < 0.0) log_lambda2_mod += 1.0;
+            if (log_lambda1_mod <= log_lambda2_mod) {
+                losses.emplace(log_lambda1_mod, loss, true,
+                                         log_lambda2_mod);
+            } else {
+                losses.emplace(log_lambda1_mod, loss, true, 1.0);
+                losses.emplace(0.0, loss, true, log_lambda2_mod);
+            }
+        }
+    }
+    double total_loss = 0.0;
+    double prev_lambda = 0.0;
+    active_losses.emplace(min_interval_loss);
+    while (!losses.empty()) {
+        LossPoint p = *losses.begin();
+        losses.erase(losses.begin());
+        total_loss += (p.lambda - prev_lambda) * *(active_losses.begin());
+        prev_lambda = p.lambda;
+        if (p.add) {
+            p.active_iterator = active_losses.emplace(p.loss);
+            p.add=false;
+            p.lambda = p.lambda_end;
+            losses.emplace(p);
+        } else {
+            active_losses.erase(p.active_iterator);
+        }
+    }
+
+    total_loss += (1.0 - prev_lambda) * *(active_losses.begin());
+
+    return total_loss;
 }
 
 void Random_st_pairs::test(int nTests, unsigned seed) {
@@ -84,6 +162,15 @@ void Random_st_pairs::test(int nTests, unsigned seed) {
             printf (" inf_zero");
         } else {
             printf (" %f", lambdas[min_loss_id+1]/lambdas[min_loss_id]);
+        }
+
+        for (double r : {1.2, 1.5, 2.0, 4.0, 10.0, 100.0, 1000.0}) {
+            if (min_loss_id == 0 || min_loss_id == npaths-1 ||
+                r < lambdas[min_loss_id+1] / lambdas[min_loss_id]) {
+                printf (" 0.0");
+            } else {
+                printf (" %.9f", expected_loss(r, npaths, paths, lambdas) - min_loss);
+            }
         }
         
         printf("\n");
