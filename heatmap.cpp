@@ -255,6 +255,10 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     count += Dijkstra_all_dest(0, paths);
     for (int i = 0; i < _nG2Points-1; i++) {
         D_max[i] = paths[i].D;
+        
+        if(D_max[i] < D_min[i] && D_min[i] - D_max[i] < TINY) {
+            D_max[i] = D_min[i];
+        }
     }
 #ifdef SHOW_DEBUG
     std::cerr << "Dijkstra completed " << count << " relaxations in "
@@ -270,6 +274,37 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     
 #ifdef SHOW_DEBUG
     printf("Max ratio: %f\n", max_ratio);
+#endif
+    
+    // Print histogram?
+    double hist_step = 0.01;
+    int num_buckets = int(max_ratio/hist_step) + 1;
+    int *hist = new int[num_buckets];
+    
+    for (int i = 0; i < num_buckets; i++)
+        hist[i] = 0;
+    
+    for (int i = 0; i < totx*toty-1; i++) {
+        double ratio = D_max[i]/D_min[i];
+        hist[int(ratio/hist_step)]++;
+    }
+    
+    // Print histogram
+    printf("Histogram for D_max/D_min\n");
+    int min_hist = 0;
+    while (hist[min_hist]==0) min_hist++;
+    for (int i = min_hist; i < num_buckets; i++) {
+        printf("%f: ", i*hist_step);
+        int height = std::round(double(hist[i])/(totx*toty-1)*100.0);
+        for (int j = 0; j < height; j++) printf("+");
+        printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(totx*toty-1)*100.0);
+    }
+    printf("total measurement points: %d\n", totx*toty-1);
+    
+    delete [] hist;
+    
+    // Generate heat map
+#ifdef SHOW_DEBUG
     std::cerr << "Generating heat map." << std::endl;
 #endif
     
