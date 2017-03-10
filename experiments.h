@@ -9,7 +9,7 @@
 #ifndef __DominantPath__experiments__
 #define __DominantPath__experiments__
 
-#include "floorplan.h"
+#include "dominantpath.h"
 
 class Random_st_pairs {
 public:

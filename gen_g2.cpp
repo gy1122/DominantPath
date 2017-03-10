@@ -6,7 +6,7 @@
 //  Copyright (c) 2016年 Ger Yang. All rights reserved.
 //
 
-#include "floorplan.h"
+#include "dominantpath.h"
 #include <cmath>
 #include <set>
 #include <cassert>
@@ -58,7 +58,7 @@ void CornerG2::insertSide(WallG2 wall) {
 // -------------------------------------
 
 DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts):
-_flp(flp), _nmPoints(nmpt), _mPoints(mpts),
+_flp(flp), _wall_finder(*_flp), _nmPoints(nmpt), _mPoints(mpts),
 _nG2Points(0), _nG2Corners(0), _G2Points(0), _G2Corners(0),
 _nG2totPoints(0), _G2totPoints(0),
 fSizeX(800), fSizeY(800), fShift(5.0),
@@ -408,6 +408,7 @@ void DominantPath::mergeLinks(PointG2 *point, int nEdges, EdgeG2 *tmpList) {
 
 void DominantPath::createLinksPostProc(PointG2 *point) {
 
+    
     // In this function, we do the following things:
     //  1.   Find loss for each link
     //  2-1. Index each link (filling in EdgeG2::source_i)
@@ -420,7 +421,7 @@ void DominantPath::createLinksPostProc(PointG2 *point) {
 
         // Find loss
         if (point->links[j].isAlongWall == 0 && target->i > point->i) {
-            point->links[j].loss = getLoss(point, point->links[j]);
+            point->links[j].loss = getLoss2(point, point->links[j]);
         }
 
         // Fill in the index
@@ -514,7 +515,6 @@ int DominantPath::numG2Links() const {
 }
 
 void DominantPath::generateG2() {
-
     initG2();
     linkWalls();
 
@@ -556,6 +556,38 @@ double DominantPath::getLoss(const PointG2 *p, const EdgeG2 &edge) const {
 
     return loss;
 }
+
+double DominantPath::getLoss2(const PointG2 *p, const EdgeG2 &edge) const {
+    double x = p->x();
+    double y = p->y();
+    double dx = _dx(p, edge);
+    double dy = _dy(p, edge);
+
+    double loss = 0.0;
+
+    int cnt = 0;
+    for (const Wall* wall : _wall_finder.getWalls(x,y,x+dx,y+dy)) {
+        ++cnt;
+        if (p->ref == wall->c1 || edge.target->ref == wall->c1 || p->ref == wall->c2 || edge.target->ref == wall->c2) continue;
+
+        double u = wall->c1->x;
+        double v = wall->c1->y;
+        double du = wall->c2->x - u;
+        double dv = wall->c2->y - v;
+
+        double z = dx*dv-dy*du;
+        if (std::abs(z) > TINY) {
+            double r = ((y-v)*dx + (u-x)*dy)/z;
+            double t = ((u-x)*dv + (y-v)*du)/z;
+            if (r>=0.0 && r<=1.0 && t>=0.0 && t<=1.0) {
+                loss += wall->loss;
+            }
+        }
+    }
+
+    return loss;
+}
+
 
 
 // -------------------------------------

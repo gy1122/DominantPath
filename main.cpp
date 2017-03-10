@@ -25,8 +25,9 @@
 #include <cstdio>
 #include <iostream>
 #include <cstring>
-#include "floorplan.h"
+#include "dominantpath.h"
 #include "experiments.h"
+#include "floorplan.h"
 #include "cputimer.h"
 
 int main(int argc, const char * argv[]) {

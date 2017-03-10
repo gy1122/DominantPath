@@ -7,7 +7,7 @@
 //
 
 #include "cputimer.h"
-#include "floorplan.h"
+#include "dominantpath.h"
 #include <cmath>
 #include <set>
 #include <queue>

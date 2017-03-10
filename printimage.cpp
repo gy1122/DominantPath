@@ -6,6 +6,7 @@
 //  Copyright (c) 2016年 Ger Yang. All rights reserved.
 //
 
+#include "dominantpath.h"
 #include "floorplan.h"
 
 #ifdef USE_OPEN_CV

@@ -7,7 +7,7 @@
 //
 
 #include "cputimer.h"
-#include "floorplan.h"
+#include "dominantpath.h"
 #include <algorithm>
 #include <iostream>
 
