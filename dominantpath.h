@@ -225,6 +225,14 @@ namespace cv {
 
 #endif
 
+struct CornerSwipeStats {
+    long int nCornerSwipes;
+    long int nSectionSwipes;
+    long int nDistUpdated;
+    long int nDistNotUpdated;
+    long int nDistTotal;
+};
+
 // -------------------------------------
 //  Main class
 // -------------------------------------
@@ -360,6 +368,7 @@ private:
     // For Dijkstra:
     void initDijkstra();
     void resetDijkstra();
+    void resetCornerStats();
     int Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, double angle, double lambda, bool cw);
     int Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int end_idx, double wall_loss, double angle, double lambda, bool cw);
     void relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edge, double lambda);
@@ -392,6 +401,9 @@ private:
     // Also create a combined list for references.
     int         _nG2totPoints;
     PointG2     **_G2totPoints;
+
+    // Dijkstra radar structure stats
+    CornerSwipeStats _cornerStats;
 
 public:
     double      fSizeX;

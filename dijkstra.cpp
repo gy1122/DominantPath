@@ -66,6 +66,14 @@ void DominantPath::resetDijkstra() {
     }
 }
 
+void DominantPath::resetCornerStats() {
+    _cornerStats.nCornerSwipes = 0;
+    _cornerStats.nSectionSwipes = 0;
+    _cornerStats.nDistUpdated = 0;
+    _cornerStats.nDistNotUpdated = 0;
+    _cornerStats.nDistTotal = 0;
+}
+
 // -------------------------------------
 //  Class DijkstraPoint
 // -------------------------------------
@@ -157,9 +165,13 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
 
     // This function implements the "radar" data structure.
 
+    _cornerStats.nCornerSwipes++;
+
     int count = 0;
 
     CornerG2 *corner = reinterpret_cast<CornerG2 *>(dpoint.p);
+
+    _cornerStats.nDistTotal += corner->links.size();
 
     // Compute in sec
     int insec = corner->links[dpoint.i].section;
@@ -195,6 +207,8 @@ int DominantPath::Dijkstra_cornerSwipe(Priority_Queue &Q, DijkstraPoint dpoint, 
 int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint, int start_idx, int term_idx, double wall_loss, double angle, double lambda, bool cw) {
     CornerG2 *corner = reinterpret_cast<CornerG2 *>(dpoint.p);
 
+    _cornerStats.nSectionSwipes++;
+
     // Direction
     int (*direc)(CornerG2 *, int) = cw? &incr : &decr;
 
@@ -218,6 +232,7 @@ int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint,
 
         // Update radar but not update Dijkstra label for the socket
         if (newrad < currad) {
+            _cornerStats.nDistUpdated++;
             //Q.decrease_key(epoint, newval);
             getDijkstraLabel(epoint).radar = newrad;
             //getDijkstraLabel(epoint).from = dpoint;
@@ -242,7 +257,10 @@ int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint,
                 getDijkstraLabel(epoint2).l_e = loss + edge->loss;
                 getDijkstraLabel(epoint2).d_e = edge->dist;
             }
-        } else break;
+        } else {
+            _cornerStats.nDistNotUpdated++;
+            break;
+        }
     }
 
     return count;
@@ -271,8 +289,8 @@ void DominantPath::relaxEdge(Priority_Queue &Q, DijkstraPoint dpoint, EdgeG2 edg
 int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
 
     const double pi = std::abs(std::atan2(0,-1));
-
     resetDijkstra();
+    resetCornerStats();
 
     Priority_Queue Q;
 
@@ -319,6 +337,13 @@ int DominantPath::Dijkstra(double lambda, int s, int t, Path &path) {
     }
 
     backTrack(lambda, s, t, path);
+
+#ifdef SHOW_DEBUG
+    printf ("Corner stats: corners %ld sections %ld distUpd %ld distNot %ld distTot %ld distSaved %ld\n",
+            _cornerStats.nCornerSwipes, _cornerStats.nSectionSwipes,
+            _cornerStats.nDistUpdated, _cornerStats.nDistNotUpdated,
+            _cornerStats.nDistTotal, _cornerStats.nDistTotal - _cornerStats.nDistUpdated - _cornerStats.nDistNotUpdated);
+#endif
 
     // Return the number of relaxations
     return count;
@@ -397,6 +422,7 @@ int DominantPath::Dijkstra_all_dest_corner(double lambda) {
     const double pi = std::abs(std::atan2(0,-1));
     
     resetDijkstra();
+    resetCornerStats();
     
     Priority_Queue Q;
     
@@ -456,7 +482,12 @@ int DominantPath::Dijkstra_all_dest_corner(double lambda) {
     }
     if (all_visited) printf("All corners are visited\n");
 #endif
-    
+
+    printf ("Corner stats: corners %ld sections %ld distUpd %ld distNot %ld distTot %ld distSaved %ld\n",
+            _cornerStats.nCornerSwipes, _cornerStats.nSectionSwipes,
+            _cornerStats.nDistUpdated, _cornerStats.nDistNotUpdated,
+            _cornerStats.nDistTotal, _cornerStats.nDistTotal - _cornerStats.nDistUpdated - _cornerStats.nDistNotUpdated);
+
     // Return the number of relaxations
     return count;
 }
@@ -615,7 +646,9 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     double min_lambda = 0.0;
     
     int numDijkstra = 0;
-    
+
+    resetCornerStats();
+
     for (int i = 0; i < _nG2Points - 1; i++) {
         vals[i] = INFINITY;
         paths[i].reset();
@@ -647,7 +680,10 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         paths[i] = tmpPaths[i];
     }
     
-    numDijkstra++;
+    // Don't count the D_min calculation as a dijkstra (because it should be
+    // done via euclidean distance
+    numDijkstra = 0;
+    resetCornerStats();
     
     // Find D_max
 #ifdef SHOW_DEBUG2
@@ -672,7 +708,8 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         }
     }
     
-    
+    numDijkstra++;
+
     // bar_f: the upper bound on the objective given by arbitrary path.  Choose the largest one among all measurement points
     /*
     for (int i = 0; i < _nG2Points - 1; i++) {
@@ -733,6 +770,11 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
     printf("number of Dijkstra=%d\n", numDijkstra);
 #endif
     
+    printf ("Corner stats: corners %ld sections %ld distUpd %ld distNot %ld distTot %ld distSaved %ld\n",
+            _cornerStats.nCornerSwipes, _cornerStats.nSectionSwipes,
+            _cornerStats.nDistUpdated, _cornerStats.nDistNotUpdated,
+            _cornerStats.nDistTotal, _cornerStats.nDistTotal - _cornerStats.nDistUpdated - _cornerStats.nDistNotUpdated);
+
     delete[] vals;
     delete[] tmpPaths;
     
