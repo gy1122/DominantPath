@@ -218,7 +218,11 @@ int DominantPath::Dijkstra_sectionSwipe(Priority_Queue &Q, DijkstraPoint dpoint,
     for (int i = start_idx; i != term_idx; i = direc(corner,i)) {
 
         DijkstraPoint epoint(corner, i);
-        if (getDijkstraLabel(epoint).visited) break;
+
+        // [dapplegate] incorrect, causing bug
+        // .visited is only for the incoming point (with Val),
+        // not for the outgoing point (with Radar)
+        // if (getDijkstraLabel(epoint).visited) break;
 
         EdgeG2 *edge = &corner->links[i];
 
