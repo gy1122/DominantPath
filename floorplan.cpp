@@ -208,7 +208,7 @@ void Floorplan::genOffice1(int nx, int ny, double wx, double wy, double hall,
             if (j > 0 && !(j % 3 == 2 && i != 0 && i != 2*nx+1)) {
                 _walls[w].c1 = &_corners[p-(2*nx+2)];
                 _walls[w].c2 = &_corners[p];
-                if (i == 0 || i == 2*ny+1) {
+                if (i == 0 || i == 2*nx+1) {
                     _walls[w].loss = exterior_wallloss;
                 } else {
                     _walls[w].loss = wallloss;
