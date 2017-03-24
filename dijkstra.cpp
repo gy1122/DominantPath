@@ -473,7 +473,7 @@ int DominantPath::Dijkstra_all_dest_corner(double lambda) {
     for (int i = 0; i < _nG2Corners; i++) {
         // make sure each corner is visited at least once
         bool visited = false;
-        for (int j = 0; j < _G2Corners[i].links.size(); j++) {
+        for (int j = 0; j < (int) _G2Corners[i].links.size(); j++) {
             DijkstraPoint dp(&_G2Corners[i], j);
             visited = visited || getDijkstraLabel(dp).visited;
         }

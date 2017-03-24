@@ -203,7 +203,7 @@ public:
 
     void insertSide(WallG2 wall);
 
-    inline int wincr(int i) const { return (i+1) % walls.size(); }
+    inline int wincr(int i) const { return (i+1) % sections(); }
     inline int wdecr(int i) const { return (i + sections() -1) % sections(); }
     inline int sections() const { return (int)walls.size(); }
 
