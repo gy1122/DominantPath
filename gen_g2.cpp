@@ -62,6 +62,7 @@ DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts,
 _flp(flp), _wall_finder(*_flp), _nmPoints(nmpt), _mPoints(mpts),
 _nG2Points(0), _nG2Corners(0), _G2Points(0), _G2Corners(0),
 _nG2totPoints(0), _G2totPoints(0),
+_label_floorplan(label_floorplan),
 fSizeX(800), fSizeY(800), fShift(label_floorplan ? 5.0 : 2.0),
 fScale(std::min((fSizeX-(label_floorplan ? 5 : 2)*fShift)/flp->getWidth(),
                 (fSizeY-(label_floorplan ? 4 : 2)*fShift)/flp->getHeight())) {
