@@ -355,7 +355,9 @@ public:
     // ---------------------------------------------
     void heatmap(double p, double step, double sx, double sy, double x, double y, double precision, const char *saveimage, bool truncate_dijkstra = true);
 
-    void ratio_all_measurement(double sx, double sy, double x, double y, double precision);
+    void ratio_all_measurement(
+        double step, double sx, double sy, double x, double y, double precision,
+        bool show_histogram, bool show_heatmap, bool dump_data);
 
 private:
 

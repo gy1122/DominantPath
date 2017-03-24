@@ -210,10 +210,12 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     delete[] paths;
 }
 
-void DominantPath::ratio_all_measurement(double sx, double sy, double x, double y, double precision) {
-    
+void DominantPath::ratio_all_measurement(
+    double step, double sx, double sy, double x, double y, double precision,
+    bool show_histogram, bool show_heatmap, bool dump_data) {
+
     int count = 0;
-    
+
     // First create a set of measurement points
     int totx = int(x * precision);
     int toty = int(y * precision);
@@ -282,80 +284,88 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     printf("Max ratio: %f\n", max_ratio);
 #endif
 
-    // Print histogram?
-    double hist_step = 0.01;
-    int num_buckets = int(max_ratio/hist_step) + 1;
-    int *hist = new int[num_buckets];
-    
-    for (int i = 0; i < num_buckets; i++)
-        hist[i] = 0;
-    
-    for (int i = 0; i < numPoints-1; i++) {
-        double ratio = D_max[i]/D_min[i];
-        hist[int(ratio/hist_step)]++;
+    if (show_histogram) {
+        double hist_step = 0.01;
+        int num_buckets = int(max_ratio/hist_step) + 1;
+        int *hist = new int[num_buckets];
+
+        for (int i = 0; i < num_buckets; i++)
+            hist[i] = 0;
+
+        for (int i = 0; i < numPoints-1; i++) {
+            double ratio = D_max[i]/D_min[i];
+            hist[int(ratio/hist_step)]++;
+        }
+
+        // Print histogram
+        printf("Histogram for D_max/D_min\n");
+        int min_hist = 0;
+        while (hist[min_hist]==0) min_hist++;
+        for (int i = min_hist; i < num_buckets; i++) {
+            printf("%f: ", i*hist_step);
+            int height = std::round(double(hist[i])/(numPoints-1)*100.0);
+            for (int j = 0; j < height; j++) printf("+");
+            printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(numPoints-1)*100.0);
+        }
+        printf("total measurement points: %d\n", numPoints-1);
+
+        delete [] hist;
     }
-    
-    // Print histogram
-    printf("Histogram for D_max/D_min\n");
-    int min_hist = 0;
-    while (hist[min_hist]==0) min_hist++;
-    for (int i = min_hist; i < num_buckets; i++) {
-        printf("%f: ", i*hist_step);
-        int height = std::round(double(hist[i])/(numPoints-1)*100.0);
-        for (int j = 0; j < height; j++) printf("+");
-        printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(numPoints-1)*100.0);
-    }
-    printf("total measurement points: %d\n", numPoints-1);
-    
-    delete [] hist;
-    
-    // Generate heat map
+
+    if (show_heatmap) {
 #ifdef SHOW_DEBUG
-    std::cerr << "Generating heat map." << std::endl;
+        std::cerr << "Generating heat map." << std::endl;
 #endif
-    
-    
-    cv::Mat image1(fSizeX, fSizeY, CV_8UC1, cv::Scalar(255));
-    cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
-    
-    
-    // Draw results
-    
-    for (int i=1; i < numPoints; i++) {
-        double ratio = D_max[i]/D_min[i];
+
+        cv::Mat image1(fSizeX, fSizeY, CV_8UC1, cv::Scalar(255));
+        cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
+
+        // Draw results
+
+        for (int i=1; i < numPoints; i++) {
+            double ratio = D_max[i]/D_min[i];
 #ifdef SHOW_DEBUG
-        //printf("Node %d (%f,%f)  loss: %f\n", i, pts[i].x, pts[i].y, max_loss);
-        //if (i == sx * toty + sy - 2)
+            //printf("Node %d (%f,%f)  loss: %f\n", i, pts[i].x, pts[i].y, max_loss);
+            //if (i == sx * toty + sy - 2)
 #endif
-        cv::Point p1((pts[i].x-0.51/precision) * fScale +fShift, (pts[i].y-0.51/precision) * fScale + fShift);
-        cv::Point p2((pts[i].x+0.51/precision) * fScale +fShift, (pts[i].y+0.51/precision) * fScale + fShift);
-        cv::Rect2d rect(p1, p2);
-        cv::rectangle(image1, rect, cv::Scalar(int((1.0-ratio/max_ratio)*256)), -1);
+            cv::Point p1((pts[i].x-0.51/precision) * fScale +fShift, (pts[i].y-0.51/precision) * fScale + fShift);
+            cv::Point p2((pts[i].x+0.51/precision) * fScale +fShift, (pts[i].y+0.51/precision) * fScale + fShift);
+            cv::Rect2d rect(p1, p2);
+            cv::rectangle(image1, rect, cv::Scalar(int((1.0-ratio/max_ratio)*256)), -1);
+        }
+    
+        cv::applyColorMap(image1, image, cv::COLORMAP_JET);
+    
+        cv::Point center(pts[0].x * fScale +fShift, pts[0].y * fScale + fShift);
+        cv::circle(image, center, 4, cv::Scalar(255,0,0), 2);
+    
+        // Draw floorplan
+        for (int i=0; i < _nG2Corners; i++) {
+            CornerG2 *point = &_G2Corners[i];
+            cv::Point center(point->x() * fScale +fShift, point->y() * fScale + fShift);
+            cv::circle(image, center, 3, cv::Scalar(0,0,0));
+        }
+    
+        for (int i=0; i < _flp->getNumWalls(); i++) {
+            Wall *wall = _flp->getWallPtr(i);
+            cv::Point p1(wall->c1->x * fScale + fShift, wall->c1->y * fScale + fShift);
+            cv::Point p2(wall->c2->x * fScale + fShift, wall->c2->y * fScale + fShift);
+            cv::line(image, p1, p2, cv::Scalar(0,0,0), 2);
+        }
+    
+        namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+        cv::imshow( "Display window", image );
+        cv::waitKey(0);
     }
-    
-    cv::applyColorMap(image1, image, cv::COLORMAP_JET);
-    
-    cv::Point center(pts[0].x * fScale +fShift, pts[0].y * fScale + fShift);
-    cv::circle(image, center, 4, cv::Scalar(255,0,0), 2);
-    
-    // Draw floorplan
-    for (int i=0; i < _nG2Corners; i++) {
-        CornerG2 *point = &_G2Corners[i];
-        cv::Point center(point->x() * fScale +fShift, point->y() * fScale + fShift);
-        cv::circle(image, center, 3, cv::Scalar(0,0,0));
+
+    if (dump_data) {
+        double logr = std::log(1.0/step);
+        for (int i=0; i<numPoints-1; ++i) {
+            printf ("measurement %d %.6f %.6f %.6f\n", i, D_min[i], D_max[i],
+                    (std::log(D_max[i]/D_min[i])/logr + 1.0));
+        }
     }
-    
-    for (int i=0; i < _flp->getNumWalls(); i++) {
-        Wall *wall = _flp->getWallPtr(i);
-        cv::Point p1(wall->c1->x * fScale + fShift, wall->c1->y * fScale + fShift);
-        cv::Point p2(wall->c2->x * fScale + fShift, wall->c2->y * fScale + fShift);
-        cv::line(image, p1, p2, cv::Scalar(0,0,0), 2);
-    }
-    
-    namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-    cv::imshow( "Display window", image );
-    cv::waitKey(0);
-    
+
     delete[] pts;
     delete[] paths;
     delete[] D_min;

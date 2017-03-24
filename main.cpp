@@ -210,9 +210,9 @@ int main(int argc, const char * argv[]) {
         << (util::cpu_timer() - break_start) << " cpu seconds."
         << std::endl;
     } else if (mode == 6) {
-        dmp.ratio_all_measurement(pts[0].x, pts[0].y,
+        dmp.ratio_all_measurement(step, pts[0].x, pts[0].y,
                                   flp.getWidth(), flp.getHeight(),
-                                  grid_measurements);
+                                  grid_measurements, false, false, true);
     }
     
     delete [] paths;
