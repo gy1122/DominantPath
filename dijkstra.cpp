@@ -634,7 +634,8 @@ int DominantPath::BreakPoints(int s, int t, int limit, Path *paths, int &npaths)
     return count;
 }
 
-int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
+int DominantPath::Approx_all_dest(double p, double step, Path *&paths,
+    bool truncate_dijkstra) {
     int count = 0;
     
     Path *tmpPaths = new Path[_nG2Points-1];
@@ -737,9 +738,11 @@ int DominantPath::Approx_all_dest(double p, double step, Path *&paths) {
         printf("lambda=%f", lambda);
         fflush (stdout);
 #endif
-        
-        _Dijkstra_dist_constraint = p / lambda / step;
-        
+
+        if (truncate_dijkstra) {
+            _Dijkstra_dist_constraint = p / lambda / step;
+        }
+
         incr_count = Dijkstra_all_dest(lambda, tmpPaths);
         count += incr_count;
 #ifdef SHOW_DEBUG2

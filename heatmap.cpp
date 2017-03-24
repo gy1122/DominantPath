@@ -73,7 +73,7 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
 }
 
 
-void DominantPath::heatmap(double p, double step, double sx, double sy, double x, double y, double precision) {
+void DominantPath::heatmap(double p, double step, double sx, double sy, double x, double y, double precision, bool truncate_dijkstra) {
 
     // First create a set of measurement points
     int totx = int(x * precision);
@@ -118,7 +118,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 #ifdef SHOW_DEBUG
     double approx_start = util::cpu_timer();
 #endif
-    int count = Approx_all_dest(p, step, paths);
+    int count = Approx_all_dest(p, step, paths, truncate_dijkstra);
 #ifdef SHOW_DEBUG
     std::cerr << "Approximation completed " << count << " relaxations in "
               << (util::cpu_timer() - approx_start) << " cpu seconds."

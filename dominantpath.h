@@ -314,9 +314,11 @@ public:
     //   - p:
     //   - step:
     //   - paths: a list of paths for storing the output paths (the size should be equal to the number of measurement points - 1).
+    //   - truncate_dijkstra: allow dijkstra truncation
     // Output:
     //   - number of Dijkstra relaxations
-    int Approx_all_dest(double p, double step, Path* &paths);
+    int Approx_all_dest(double p, double step, Path* &paths,
+                        bool truncate_dijkstra = true);
 
 #ifdef USE_OPEN_CV
 
@@ -341,8 +343,9 @@ public:
     //   - sx, sy: source coord
     //   - x, y: size
     //   - precision: how many point within unit dist
+    //   - truncate_dijkstra: allow Approx_all_dest to truncate the dijkstra
     // ---------------------------------------------
-    void heatmap(double p, double step, double sx, double sy, double x, double y, double precision);
+    void heatmap(double p, double step, double sx, double sy, double x, double y, double precision, bool truncate_dijkstra = true);
 
     void ratio_all_measurement(double sx, double sy, double x, double y, double precision);
 

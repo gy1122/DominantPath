@@ -54,6 +54,8 @@ int main(int argc, const char * argv[]) {
     double grid_measurements = 5.0;
     double step = 0.5;
 
+    bool truncate_dijkstra = true;
+
     // quick hack for various computations
     // mode 0 == s-t breakpoint path computation
     // mode 1 == all destinations
@@ -100,6 +102,7 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-office_y") == 0) office_y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-hall_width") == 0) hall_width = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-n") == 0) num_experiments = atoi(argv[++argi]);
+        else if (strcmp(argv[argi], "-truncate") == 0) truncate_dijkstra = atoi(argv[++argi]);
 
         argi++;
     }
@@ -174,14 +177,14 @@ int main(int argc, const char * argv[]) {
                   << std::endl;
     } else if (mode == 2) {
         double break_start = util::cpu_timer();
-        dmp.Approx_all_dest(p, step, paths);
+        dmp.Approx_all_dest(p, step, paths, truncate_dijkstra);
         std::cerr << "Approx_all_dest finished in "
                   << (util::cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
     } else if (mode == 3) {
         dmp.heatmap(p, step, pts[0].x, pts[0].y,
                     flp.getWidth(), flp.getHeight(),
-                    grid_measurements);
+                    grid_measurements, truncate_dijkstra);
     } else if (mode == 4) { // for testing
         Random_st_pairs rsp(&flp, p);
         rsp.size_x = flp.getWidth();
