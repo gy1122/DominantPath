@@ -52,7 +52,7 @@ int main(int argc, const char * argv[]) {
     const char *saveimage = 0;
     std::vector<int> pathset;
 
-    int display_paths = 1;
+    bool display_paths = 1;
     bool label_floorplan = 1;
     double grid_measurements = 5.0;
     double step = 0.5;
