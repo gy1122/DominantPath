@@ -39,8 +39,8 @@ void DominantPath::makeFloorplanImage(cv::Mat &image, bool text) {
 }
 
 void DominantPath::printFloorplan() {
-    cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
-    makeFloorplanImage(image);
+    cv::Mat image(fSizeY, fSizeX, CV_8UC3, cv::Scalar(255,255,255));
+    makeFloorplanImage(image, _label_floorplan);
 
     namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
     cv::imshow( "Display window", image );
@@ -50,8 +50,8 @@ void DominantPath::printFloorplan() {
 // Check if the data structure is correct
 void DominantPath::printG2(int p) {
 
-    cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
-    makeFloorplanImage(image);
+    cv::Mat image(fSizeY, fSizeX, CV_8UC3, cv::Scalar(255,255,255));
+    makeFloorplanImage(image, _label_floorplan);
 
     int j = p;
     PointG2 *point = _G2totPoints[j];
@@ -87,13 +87,70 @@ void DominantPath::printG2(int p) {
     cv::waitKey(0);
 }
 
-void DominantPath::printPaths(int npaths, Path *paths, double p) {
+void DominantPath::printPaths(int npaths, Path *paths, double p,
+                              const char* saveimage,
+                              const std::vector<int>& pathset) {
 
-    cv::Mat image(fSizeX, fSizeY, CV_8UC3, cv::Scalar(255,255,255));
-    makeFloorplanImage(image);
+    cv::Mat image(fSizeY, fSizeX, CV_8UC3, cv::Scalar(255,255,255));
+    makeFloorplanImage(image, _label_floorplan);
 
 
     printf("Total: %d paths.\n", npaths);
+
+    if (!pathset.empty()) {
+        cv::Scalar path_colors[] = {
+            cv::Scalar(0,0,255),
+            cv::Scalar(0,192,0),
+            cv::Scalar(255,0,0),
+            cv::Scalar(0,255,255),
+            cv::Scalar(255,0,255),
+            cv::Scalar(255,255,0)
+        };
+
+        unsigned int color = 0;
+        for (int i : pathset) {
+            DijkstraPoint ptr1 = paths[i].v[0];
+            for (int j=1; j < (int) paths[i].v.size(); j++) {
+                DijkstraPoint ptr2 = paths[i].v[j];
+                cv::Point p1(ptr1.p->x() * fScale + fShift, ptr1.p->y() * fScale + fShift);
+                cv::Point p2(ptr2.p->x() * fScale + fShift, ptr2.p->y() * fScale + fShift);
+                cv::line(image, p1, p2, path_colors[color], 4);
+                ptr1 = ptr2;
+            }
+            if (++color >= sizeof (path_colors) / sizeof (path_colors[0])) {
+                color = 0;
+            }
+        }
+        if (_nG2Points == 2) {
+            {
+                cv::Point center(_G2Points[0].x() * fScale +fShift, _G2Points[0].y() * fScale + fShift);
+                cv::Point font_center(center.x - 19.5, center.y + 6);
+                cv::putText(image, "s", font_center,
+                            cv::FONT_HERSHEY_SIMPLEX, 1.0,
+                            cv::Scalar(0,0,0));
+            }
+            {
+                cv::Point center(_G2Points[1].x() * fScale +fShift, _G2Points[1].y() * fScale + fShift);
+                cv::Point font_center(center.x + 7.5, center.y + 6);
+                cv::putText(image, "t", font_center,
+                            cv::FONT_HERSHEY_SIMPLEX, 1.0,
+                            cv::Scalar(0,0,0));
+            }
+        }
+        if (saveimage == nullptr) {
+            namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+            cv::imshow( "Display window", image );
+            cv::waitKey(0);
+        } else {
+            cv::imwrite(saveimage, image);
+        }
+        return;
+    }
+
+    if (saveimage != nullptr) {
+        cv::imwrite(saveimage, image);
+        return;
+    }
 
     for (int i=0; i < npaths; i++) {
         cv::Mat image2 = image.clone();

@@ -49,8 +49,11 @@ int main(int argc, const char * argv[]) {
 
     const char *save = 0;
     const char *load = 0;
+    const char *saveimage = 0;
+    std::vector<int> pathset;
 
     int display_paths = 1;
+    bool label_floorplan = 1;
     double grid_measurements = 5.0;
     double step = 0.5;
 
@@ -61,6 +64,9 @@ int main(int argc, const char * argv[]) {
     // mode 1 == all destinations
     // mode 2 == approx all dest
     // mode 3 == heatmap
+    // mode 4 == random s-t pair breakpoint evaluation
+    // mode 5 == coverage
+    // mode 6 == ratio_all_measurement
     int mode = 0;
 
     int num_experiments = 100;
@@ -88,6 +94,7 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-sd") == 0) seed = atoi(argv[++argi]);
         else if (strcmp(argv[argi], "-s") == 0) save = argv[++argi];
         else if (strcmp(argv[argi], "-l") == 0) load = argv[++argi];
+        else if (strcmp(argv[argi], "-w") == 0) saveimage = argv[++argi];
         else if (strcmp(argv[argi], "-p0x") == 0) pts[0].x = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-p0y") == 0) pts[0].y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-p1x") == 0) pts[1].x = atof(argv[++argi]);
@@ -102,7 +109,9 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-office_y") == 0) office_y = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-hall_width") == 0) hall_width = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-n") == 0) num_experiments = atoi(argv[++argi]);
+        else if (strcmp(argv[argi], "-path") == 0) pathset.push_back(atoi(argv[++argi]));
         else if (strcmp(argv[argi], "-truncate") == 0) truncate_dijkstra = atoi(argv[++argi]);
+        else if (strcmp(argv[argi], "-label") == 0) label_floorplan = atoi(argv[++argi]);
 
         argi++;
     }
@@ -144,9 +153,13 @@ int main(int argc, const char * argv[]) {
                   << " cpu seconds." << std::endl;
     }
 
+    int npts = 2;
+    if (mode == 1 || mode == 2) npts = 3;
 
-    DominantPath dmp(&flp, 3, pts);
-    if (mode != 3 && mode != 6) {
+    if (mode == 3) label_floorplan = false;
+    DominantPath dmp(&flp, npts, pts, label_floorplan);
+
+    if (mode != 3 && mode != 4 && mode != 6) {
         double geng2_start = util::cpu_timer();
         dmp.generateG2();
         std::cerr << "G2 generated " << dmp.numG2Points() << " points, "
@@ -164,7 +177,7 @@ int main(int argc, const char * argv[]) {
                   << (util::cpu_timer() - break_start) << " cpu seconds."
                   << std::endl;
         if (display_paths) {
-            dmp.printPaths(npaths, paths, p);
+            dmp.printPaths(npaths, paths, p, saveimage, pathset);
         }
         for (int i = 0; i < npaths; i++) {
             printf("%f\n", (paths[i].L+p*std::log(paths[i].D)));
@@ -184,7 +197,7 @@ int main(int argc, const char * argv[]) {
     } else if (mode == 3) {
         dmp.heatmap(p, step, pts[0].x, pts[0].y,
                     flp.getWidth(), flp.getHeight(),
-                    grid_measurements, truncate_dijkstra);
+                    grid_measurements, saveimage, truncate_dijkstra);
     } else if (mode == 4) { // for testing
         Random_st_pairs rsp(&flp, p);
         rsp.size_x = flp.getWidth();

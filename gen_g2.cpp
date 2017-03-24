@@ -57,13 +57,16 @@ void CornerG2::insertSide(WallG2 wall) {
 //  Class DominantPath (constructor & destructor)
 // -------------------------------------
 
-DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts):
+DominantPath::DominantPath(Floorplan *flp, int nmpt, Point *mpts,
+                           bool label_floorplan):
 _flp(flp), _wall_finder(*_flp), _nmPoints(nmpt), _mPoints(mpts),
 _nG2Points(0), _nG2Corners(0), _G2Points(0), _G2Corners(0),
 _nG2totPoints(0), _G2totPoints(0),
-fSizeX(800), fSizeY(800), fShift(5.0),
-fScale(std::min((fSizeX-4*fShift)/flp->getWidth(),
-                (fSizeY-5*fShift)/flp->getHeight())) {
+fSizeX(800), fSizeY(800), fShift(label_floorplan ? 5.0 : 2.0),
+fScale(std::min((fSizeX-(label_floorplan ? 5 : 2)*fShift)/flp->getWidth(),
+                (fSizeY-(label_floorplan ? 4 : 2)*fShift)/flp->getHeight())) {
+    fSizeX = flp->getWidth() * fScale + (label_floorplan ? 5 : 2)*fShift;
+    fSizeY = flp->getHeight() * fScale + (label_floorplan ? 4 : 2)*fShift;
 }
 
 DominantPath::~DominantPath() {

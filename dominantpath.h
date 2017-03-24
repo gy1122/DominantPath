@@ -249,7 +249,8 @@ public:
     //  - nmpt: number of measurement points
     //  - mpts: a list of the measurement points
     // ---------------------------------------------
-    DominantPath(Floorplan *flp, int nmpt, Point *mpts);
+    DominantPath(Floorplan *flp, int nmpt, Point *mpts,
+                 bool label_floorplan = false);
     ~DominantPath();
 
     // This function generates G2 from Floorplan *_flp
@@ -334,8 +335,14 @@ public:
     // This function prints the result of Dijkstra
     //   - npaths: number of paths to be printed
     //   - paths: the list for the paths to be printed
+    //   - p: the multiplier on the log() term in the loss
+    //   - saveimage: if not null, save the image to this file
+    //   - pathset: a list of paths to simultaneously display.  If not set,
+    //        paths will be displayed one at a time, and saveimage will only
+    //        contain the floorplan
     // ---------------------------------------------
-    void printPaths(int npaths, Path *paths, double p);
+    void printPaths(int npaths, Path *paths, double p, const char* saveimage,
+                    const std::vector<int>& pathset);
 
     // This function finds the heatmap
     //   - p:
@@ -343,15 +350,17 @@ public:
     //   - sx, sy: source coord
     //   - x, y: size
     //   - precision: how many point within unit dist
+    //   - saveimage: if not null, save the image to this path
     //   - truncate_dijkstra: allow Approx_all_dest to truncate the dijkstra
     // ---------------------------------------------
-    void heatmap(double p, double step, double sx, double sy, double x, double y, double precision, bool truncate_dijkstra = true);
+    void heatmap(double p, double step, double sx, double sy, double x, double y, double precision, const char *saveimage, bool truncate_dijkstra = true);
 
     void ratio_all_measurement(double sx, double sy, double x, double y, double precision);
 
 private:
 
-    void makeFloorplanImage(cv::Mat &image, bool text = true);
+    Point* measurements(int totx, int toty, double precision, int* numPoints);
+    void makeFloorplanImage(cv::Mat &image, bool text = false);
 
 #endif
 
@@ -407,6 +416,9 @@ private:
 
     // Dijkstra radar structure stats
     CornerSwipeStats _cornerStats;
+
+    // label points in image
+    bool        _label_floorplan;
 
 public:
     double      fSizeX;

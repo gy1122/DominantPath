@@ -72,31 +72,39 @@ void callbackfunc(int event, int x, int y, int flags, void *data) {
     }
 }
 
+Point *DominantPath::measurements(int totx, int toty, double precision,
+                                  int* numPoints) {
+    *numPoints = totx*toty;
+    Point *pts = new Point[*numPoints];
 
-void DominantPath::heatmap(double p, double step, double sx, double sy, double x, double y, double precision, bool truncate_dijkstra) {
-
-    // First create a set of measurement points
-    int totx = int(x * precision);
-    int toty = int(y * precision);
-
-    Point *pts = new Point[totx*toty];
-
-    int z = 0;
     for (int i = 0; i < totx; i++) {
-        for (int j = 0; j < toty; j++, z++) {
+        for (int j = 0; j < toty; j++) {
             pts[i * toty + j].x = double(i + 0.5)/precision;
             pts[i * toty + j].y = double(j + 0.5)/precision;
         }
     }
 
+    return pts;
+}
+
+void DominantPath::heatmap(double p, double step, double sx, double sy, double x, double y, double precision, const char *saveimage, bool truncate_dijkstra) {
+
+    // First create a set of measurement points
+    int totx = int(x * precision);
+    int toty = int(y * precision);
+    int numPoints = 0;
+    Point *pts = measurements(totx, toty, precision, &numPoints);
+
     // Set (sx, sy) to be the source
     std::swap( pts[0], pts[int(sx * precision) * toty + int(sy * precision)]);
-    
+
+#ifdef SHOW_DEBUG
     printf("The actual source is (%f,%f)\n", pts[0].x, pts[0].y);
+#endif
 
     // Set up the points
     _mPoints = pts;
-    _nmPoints = totx * toty;
+    _nmPoints = numPoints;
 
     // Generate G2
 #ifdef SHOW_DEBUG
@@ -113,7 +121,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 #endif
 
     // Run approx alg
-    Path *paths = new Path[totx * toty - 1];
+    Path *paths = new Path[numPoints - 1];
     
 #ifdef SHOW_DEBUG
     double approx_start = util::cpu_timer();
@@ -126,7 +134,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 #endif
 
     double max_loss = 0.0;
-    for (int i=0; i < totx*toty-1; i++) {
+    for (int i=0; i < numPoints-1; i++) {
         if (max_loss < paths[i].L + p * std::log(paths[i].D))
             max_loss = paths[i].L + p * std::log(paths[i].D);
     }
@@ -143,7 +151,7 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
 
     // Draw results
 
-    for (int i=1; i < totx*toty; i++) {
+    for (int i=1; i < numPoints; i++) {
         double loss = paths[i-1].L + p * std::log(paths[i-1].D);
 #ifdef SHOW_DEBUG
         //printf("Node %d (%f,%f)  loss: %f\n", i, pts[i].x, pts[i].y, max_loss);
@@ -189,10 +197,14 @@ void DominantPath::heatmap(double p, double step, double sx, double sy, double x
     md.p = p;
     md.pts = pts;
 
-    namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-    cv::setMouseCallback("Display window", callbackfunc, &md);
-    cv::imshow( "Display window", image );
-    cv::waitKey(0);
+    if (saveimage != nullptr) {
+        cv::imwrite(saveimage, image);
+    } else {
+        namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+        cv::setMouseCallback("Display window", callbackfunc, &md);
+        cv::imshow( "Display window", image );
+        cv::waitKey(0);
+    }
 
     delete[] pts;
     delete[] paths;
@@ -205,25 +217,19 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     // First create a set of measurement points
     int totx = int(x * precision);
     int toty = int(y * precision);
-    
-    Point *pts = new Point[totx*toty];
-    
-    int z = 0;
-    for (int i = 0; i < totx; i++) {
-        for (int j = 0; j < toty; j++, z++) {
-            pts[i * toty + j].x = double(i + 0.5)/precision;
-            pts[i * toty + j].y = double(j + 0.5)/precision;
-        }
-    }
-    
+    int numPoints = 0;
+    Point *pts = measurements(totx, toty, precision, &numPoints);
+
     // Set (sx, sy) to be the source
     std::swap( pts[0], pts[int(sx * precision) * toty + int(sy * precision)]);
-    
+
+#ifdef SHOW_DEBUG
     printf("The actual source is (%f,%f)\n", pts[0].x, pts[0].y);
-    
+#endif
+
     // Set up the points
     _mPoints = pts;
-    _nmPoints = totx * toty;
+    _nmPoints = numPoints;
     
     // Generate G2
 #ifdef SHOW_DEBUG
@@ -240,9 +246,9 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
 #endif
     
     // Find D_min and D_max
-    Path *paths = new Path[totx * toty - 1];
-    double *D_min = new double[totx*toty-1];
-    double *D_max = new double[totx*toty-1];
+    Path *paths = new Path[numPoints - 1];
+    double *D_min = new double[numPoints-1];
+    double *D_max = new double[numPoints-1];
     
 #ifdef SHOW_DEBUG
     double approx_start = util::cpu_timer();
@@ -251,11 +257,11 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     for (int i = 0; i < _nG2Points-1; i++) {
         D_min[i] = paths[i].D;
     }
-    
+
     count += Dijkstra_all_dest(0, paths);
     for (int i = 0; i < _nG2Points-1; i++) {
         D_max[i] = paths[i].D;
-        
+
         if(D_max[i] < D_min[i] && D_min[i] - D_max[i] < TINY) {
             D_max[i] = D_min[i];
         }
@@ -267,7 +273,7 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
 #endif
     
     double max_ratio = 0.0;
-    for (int i=0; i < totx*toty-1; i++) {
+    for (int i=0; i < numPoints-1; i++) {
         double ratio = D_max[i]/D_min[i];
         max_ratio = std::max(max_ratio, ratio);
     }
@@ -275,7 +281,7 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
 #ifdef SHOW_DEBUG
     printf("Max ratio: %f\n", max_ratio);
 #endif
-    
+
     // Print histogram?
     double hist_step = 0.01;
     int num_buckets = int(max_ratio/hist_step) + 1;
@@ -284,7 +290,7 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     for (int i = 0; i < num_buckets; i++)
         hist[i] = 0;
     
-    for (int i = 0; i < totx*toty-1; i++) {
+    for (int i = 0; i < numPoints-1; i++) {
         double ratio = D_max[i]/D_min[i];
         hist[int(ratio/hist_step)]++;
     }
@@ -295,11 +301,11 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     while (hist[min_hist]==0) min_hist++;
     for (int i = min_hist; i < num_buckets; i++) {
         printf("%f: ", i*hist_step);
-        int height = std::round(double(hist[i])/(totx*toty-1)*100.0);
+        int height = std::round(double(hist[i])/(numPoints-1)*100.0);
         for (int j = 0; j < height; j++) printf("+");
-        printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(totx*toty-1)*100.0);
+        printf(" (%d, %.2f%%)\n", hist[i], double(hist[i])/(numPoints-1)*100.0);
     }
-    printf("total measurement points: %d\n", totx*toty-1);
+    printf("total measurement points: %d\n", numPoints-1);
     
     delete [] hist;
     
@@ -315,7 +321,7 @@ void DominantPath::ratio_all_measurement(double sx, double sy, double x, double 
     
     // Draw results
     
-    for (int i=1; i < totx*toty; i++) {
+    for (int i=1; i < numPoints; i++) {
         double ratio = D_max[i]/D_min[i];
 #ifdef SHOW_DEBUG
         //printf("Node %d (%f,%f)  loss: %f\n", i, pts[i].x, pts[i].y, max_loss);
