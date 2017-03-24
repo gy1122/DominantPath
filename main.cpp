@@ -42,6 +42,7 @@ int main(int argc, const char * argv[]) {
     int size_y = 15;
 
     unsigned seed = 0;
+    unsigned st_seed = 0;
     int office = 0;
     double office_x = 3.0;
     double office_y = 4.0;
@@ -92,6 +93,7 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(argv[argi], "-al") == 0) angle_loss = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-el") == 0) exterior_wall_loss = atof(argv[++argi]);
         else if (strcmp(argv[argi], "-sd") == 0) seed = atoi(argv[++argi]);
+        else if (strcmp(argv[argi], "-st") == 0) st_seed = atoi(argv[++argi]);
         else if (strcmp(argv[argi], "-s") == 0) save = argv[++argi];
         else if (strcmp(argv[argi], "-l") == 0) load = argv[++argi];
         else if (strcmp(argv[argi], "-w") == 0) saveimage = argv[++argi];
@@ -202,7 +204,7 @@ int main(int argc, const char * argv[]) {
         Random_st_pairs rsp(&flp, p);
         rsp.size_x = flp.getWidth();
         rsp.size_y = flp.getHeight();
-        rsp.test(num_experiments);
+        rsp.test(num_experiments, st_seed);
     } else if (mode == 5) {
         double break_start = util::cpu_timer();
         coverage(dmp);

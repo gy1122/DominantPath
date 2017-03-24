@@ -16,7 +16,7 @@ public:
     Random_st_pairs(Floorplan *flp, double p);
     ~Random_st_pairs();
     
-    void test(int nTests, unsigned seed = 123);
+    void test(int nTests, unsigned seed);
 
     double expected_loss(double r, int npaths, const Path* paths,
                          const double* lambdas) const;
